@@ -23,7 +23,6 @@
 #include "sensor_types.h"
 #include "SensirionI2cSht4x.h"
 #include "SensorManager.h"
-#include "ADS131M08.h"
 #include "LoRaWAN_ESP32.h"
 #include "nvs_flash.h"
 #include "esp_sleep.h"
@@ -35,7 +34,6 @@
 #include "utilities.h"
 #include "ble_service.h"  
 #include "deep_sleep_config.h"
-#include "ModbusManager.h"  // Incluir el nuevo header
 
 /*-------------------------------------------------------------------------------------------------
    Declaración de funciones
@@ -98,7 +96,6 @@ SPISettings spiAdcSettings(SPI_ADC_CLOCK, MSBFIRST, SPI_MODE1);
 SPISettings spiRtdSettings(SPI_RTD_CLOCK, MSBFIRST, SPI_MODE1);
 SPISettings spiRadioSettings(SPI_RADIO_CLOCK, MSBFIRST, SPI_MODE0);
 
-ADS131M08 adc(ioExpander, spi, spiAdcSettings);
 MAX31865_RTD rtd(MAX31865_RTD::RTD_PT100, spi, spiRtdSettings, ioExpander, PT100_CS_PIN);
 
 SX1262 radio = new Module(LORA_NSS_PIN, LORA_DIO1_PIN, LORA_RST_PIN, LORA_BUSY_PIN, spi, spiRadioSettings);
@@ -138,10 +135,6 @@ void goToDeepSleep() {
     // Flush Serial antes de dormir
     Serial.flush();
     Serial.end();
-    
-    // Cerrar Serial1 (Modbus)
-    Serial1.flush();
-    Serial1.end();
     
     // Apagar módulos
     radio.sleep(true);
@@ -304,27 +297,10 @@ void loop() {
     // Array para almacenar las lecturas de sensores
     std::vector<SensorReading> readings;
     
-    // Forzar lectura inicial del ADC, timeout 1000ms
-    SensorManager::updateADCReadings(1000);
-    
     // Obtener lecturas de los sensores habilitados
     for (const auto& sensor : enabledSensors) {
         readings.push_back(SensorManager::getSensorReading(sensor));
     }
-    
-    // Inicializar y leer sensor Modbus (dirección 1)
-    Serial.println("Inicializando comunicación Modbus a 9600 baudios...");
-    ModbusManager::begin(9600);
-    
-    // Leer sensor Modbus en dirección 1
-    Serial.println("Leyendo sensor Modbus en dirección 1...");
-    Sensor4in1Data modbusData = ModbusManager::readSensor4in1(1);
-    
-    // Convertir datos Modbus a lecturas de sensores y añadirlas al vector
-    std::vector<SensorReading> modbusReadings = ModbusManager::convertToSensorReadings(modbusData, 1);
-    
-    // Añadir lecturas Modbus al vector principal
-    readings.insert(readings.end(), modbusReadings.begin(), modbusReadings.end());
     
     // Enviar el payload fragmentado
     sendFragmentedPayload(readings);
@@ -528,4 +504,3 @@ int16_t lwActivate() {
     store.end();
     return state;
 }
-
