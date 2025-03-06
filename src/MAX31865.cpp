@@ -1,4 +1,3 @@
-#include <Arduino.h>
 #include "MAX31865.h"
 #include <math.h>   // Para sqrt
 
