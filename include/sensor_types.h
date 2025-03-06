@@ -20,6 +20,8 @@ enum SensorType {
     MB_PM10, // Modbus PM10
     MB_PRES, // Modbus Pressure
     MB_ILLUM, // Modbus Illuminance
+    S30_T, // SHT30 Temperature
+    S30_H   // SHT30 Humidity
 };
 
 struct SensorConfig {

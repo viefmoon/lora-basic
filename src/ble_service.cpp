@@ -7,13 +7,16 @@ BLEService* setupBLEService(BLEServer* pServer) {
     // Crear el servicio de configuración utilizando el UUID definido
     BLEService* pService = pServer->createService(BLEUUID(BLE_SERVICE_UUID));
 
-    // Característica del sistema
+    // Característica del sistema - común para todos los tipos de dispositivo
     BLECharacteristic* pSystemChar = pService->createCharacteristic(
         BLEUUID(BLE_CHAR_SYSTEM_UUID),
         BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE
     );
     pSystemChar->setCallbacks(new SystemConfigCallback());
 
+#ifdef DEVICE_TYPE_ANALOGIC
+    // Para dispositivo analógico, se utilizan todas las callbacks
+    
     // Característica para configuración NTC 100K
     BLECharacteristic* pNTC100KChar = pService->createCharacteristic(
         BLEUUID(BLE_CHAR_NTC100K_UUID),
@@ -41,15 +44,18 @@ BLEService* setupBLEService(BLEServer* pServer) {
         BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE
     );
     pPHChar->setCallbacks(new PHConfigCallback());
-    
-    // Característica para configuración de Sensores
+#endif
+
+    // Característica para configuración de Sensores - común para BASIC y ANALOGIC
+#if defined(DEVICE_TYPE_BASIC) || defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
     BLECharacteristic* pSensorsChar = pService->createCharacteristic(
         BLEUUID(BLE_CHAR_SENSORS_UUID),
         BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE
     );
     pSensorsChar->setCallbacks(new SensorsConfigCallback());
+#endif
     
-    // Característica para configuración de LoRa
+    // Característica para configuración de LoRa - común para todos los tipos
     BLECharacteristic* pLoRaConfigChar = pService->createCharacteristic(
         BLEUUID(BLE_CHAR_LORA_CONFIG_UUID),
         BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE
@@ -58,4 +64,4 @@ BLEService* setupBLEService(BLEServer* pServer) {
     
     pService->start();
     return pService;
-} 
+}

@@ -2,13 +2,22 @@
 #define CONFIG_H
 
 // ==========================================================
+//              DEFINICIÓN DE TIPO DE DISPOSITIVO
+// ==========================================================
+
+// Descomentar solo UNO de los siguientes tipos de dispositivo
+#define DEVICE_TYPE_BASIC     // Dispositivo básico (solo RTD y DS18B20)
+// #define DEVICE_TYPE_ANALOGIC  // Dispositivo analógico (todos los sensores)
+// #define DEVICE_TYPE_MODBUS    // Dispositivo Modbus
+
+// ==========================================================
 //              DEFINICIONES FIXAS DE HARDWARE
 // ==========================================================
 
 // Configuración de pines generales
-#define ONE_WIRE_BUS        19    
-#define I2C_SDA_PIN         1
-#define I2C_SCL_PIN         0
+#define ONE_WIRE_BUS        0   
+#define I2C_SDA_PIN         19
+#define I2C_SCL_PIN         18
 
 // Direcciones I2C
 #define I2C_ADDRESS_PCA9555 0x20
@@ -32,9 +41,8 @@
 
 // Pin para FlowSensor
 #define FLOW_SENSOR_PIN P14
-
 // Definición del canal ADC para la lectura del voltaje de la batería
-#define BATTERY_ADC_CHANNEL 6
+#define BATTERY_ADC_PIN 1
 
 // Pines para modo Config
 #define CONFIG_PIN          2     // Pin para entrar en modo config
@@ -101,15 +109,20 @@
 #define PH_DEFAULT_T3          9.18     // Valor de pH alto
 #define PH_DEFAULT_TEMP        25.0     // Temperatura de calibración por defecto
 
+// =============== Calibración Batería ===============
+const double R1 = 470000.0;    // Resistencia fija
+const double R2 = 1500000.0;   // Resistencia fija
+const double conversionFactor = (R1 + R2) / R1;    // Factor de conversión para el voltaje de la batería
+
 // ==========================================================
 //           CONFIGURACIÓN DE LoRa 
 // ==========================================================
 
 //FOR OTAA
 #define DEFAULT_JOIN_EUI         "00,00,00,00,00,00,00,00"
-#define DEFAULT_DEV_EUI          "1a,24,39,80,d2,81,c1,c8"
-#define DEFAULT_APP_KEY          "f1,7c,ce,b8,d5,a3,83,df,fa,09,67,01,36,a9,04,90"
-#define DEFAULT_NWK_KEY          "48,7c,01,0f,34,c1,d4,4c,db,5c,41,87,a9,3f,f0,75"
+#define DEFAULT_DEV_EUI          "1f,d4,e6,68,46,8c,e1,b7"
+#define DEFAULT_APP_KEY          "1d,fb,69,80,69,d6,a0,7e,5d,bf,29,ba,6b,37,d3,04"
+#define DEFAULT_NWK_KEY          "82,91,e9,55,19,ab,c0,6c,86,25,63,68,e7,f4,5a,89"
 // BLE service y características UUID
 #define BLE_SERVICE_UUID             "180A"
 #define BLE_CHAR_SYSTEM_UUID         "2A37"
@@ -132,9 +145,8 @@
 #define SPI_RADIO_CLOCK   100000    // 100 kHz
 
 // ==========================================================
-//          CLAVES PARA CONFIGURACIÓN EN NVS (Preferences)
+//          CLAVES PARA CONFIGURACIÓN (NVS/Preferences)
 // ==========================================================
-
 #define KEY_INITIALIZED        "initialized"
 #define KEY_SLEEP_TIME         "sleep_time"
 #define KEY_STATION_ID         "stationId"
@@ -214,4 +226,51 @@
 //            CLAVES ADICIONALES DE CONFIGURACIÓN
 // ==========================================================
 #define VALUE_INITIALIZED   true
-#endif // CONFIG_H 
+
+// ==========================================================
+//            CONFIGURACIONES DE SENSORES POR DEFECTO
+// ==========================================================
+
+// Definición de configuraciones de sensores por defecto según tipo de dispositivo
+#ifdef DEVICE_TYPE_BASIC
+// Para dispositivo básico, solo RTD, DS18B20 y SHT30
+#define DEFAULT_SENSOR_CONFIGS { \
+    {"R", "RTD1", RTD, 0, "", true}, \
+    {"D", "DS1", DS18B20, 0, "", true}, \
+    {"D", "S30_T", S30_T, 0, "", true}, \
+    {"D", "S30_H", S30_H, 0, "", true} \
+}
+#elif defined(DEVICE_TYPE_ANALOGIC)
+// Para dispositivo analógico, todos los sensores
+#define DEFAULT_SENSOR_CONFIGS { \
+    {"0", "NTC1", N100K, 0, "", true}, \
+    {"1", "NTC2", N100K, 1, "", true}, \
+    {"2", "CH1", CONDH, 2, "", true}, \
+    {"3", "SM1", SOILH, 3, "", true}, \
+    {"4", "SM2", SOILH, 4, "", true}, \
+    {"5", "CON1", COND, 5, "", true}, \
+    {"7", "PH1", PH, 7, "", true}, \
+    {"R", "RTD1", RTD, 0, "", true}, \
+    {"D", "DS1", DS18B20, 0, "", true}, \
+    {"D", "S30_T", S30_T, 0, "", true}, \
+    {"D", "S30_H", S30_H, 0, "", true} \
+}
+#elif defined(DEVICE_TYPE_MODBUS)
+// Para dispositivo Modbus, solo RTD, DS18B20 y SHT30 por ahora
+#define DEFAULT_SENSOR_CONFIGS { \
+    {"R", "RTD1", RTD, 0, "", true}, \
+    {"D", "DS1", DS18B20, 0, "", true}, \
+    {"D", "S30_T", S30_T, 0, "", true}, \
+    {"D", "S30_H", S30_H, 0, "", true} \
+}
+#else
+// Default fallback
+#define DEFAULT_SENSOR_CONFIGS { \
+    {"R", "RTD1", RTD, 0, "", true}, \
+    {"D", "DS1", DS18B20, 0, "", true}, \
+    {"D", "S30_T", S30_T, 0, "", true}, \
+    {"D", "S30_H", S30_H, 0, "", true} \
+}
+#endif
+
+#endif // CONFIG_H

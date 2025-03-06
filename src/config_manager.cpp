@@ -27,17 +27,7 @@ static void readNamespace(const char* ns, StaticJsonDocument<JSON_DOC_SIZE>& doc
     deserializeJson(doc, jsonString);
 }
 
-const SensorConfig ConfigManager::defaultConfigs[] = {
-    {"0", "NTC1", N100K, 0, "", true},
-    {"1", "NTC2", N100K, 1, "", true},
-    {"2", "CH1", CONDH, 2, "", true},
-    {"3", "SM1", SOILH, 3, "", true},
-    {"4", "SM2", SOILH, 4, "", true},
-    {"5", "CON1", COND, 5, "", true},
-    {"7", "PH1", PH, 7, "", true},
-    {"R", "RTD1", RTD, 0, "", true},
-    {"D", "DS1", DS18B20, 0, "", true}
-};
+const SensorConfig ConfigManager::defaultConfigs[] = DEFAULT_SENSOR_CONFIGS;
 
 bool ConfigManager::checkInitialized() {
     StaticJsonDocument<JSON_DOC_SIZE> doc;
@@ -47,6 +37,7 @@ bool ConfigManager::checkInitialized() {
 
 void ConfigManager::initializeDefaultConfig() {
     // Sistema unificado: NAMESPACE_SYSTEM (incluye system, sleep y device)
+    // Común para todos los tipos de dispositivo
     {
         StaticJsonDocument<JSON_DOC_SIZE> doc;
         doc[KEY_STATION_ID] = DEFAULT_STATION_ID;
@@ -56,7 +47,8 @@ void ConfigManager::initializeDefaultConfig() {
         writeNamespace(NAMESPACE_SYSTEM, doc);
     }
     
-    // NTC 100K: NAMESPACE_NTC100K
+#ifdef DEVICE_TYPE_ANALOGIC
+    // NTC 100K: NAMESPACE_NTC100K - Solo para dispositivo analógico
     {
         StaticJsonDocument<JSON_DOC_SIZE> doc;
         doc[KEY_NTC100K_T1] = DEFAULT_T1_100K;
@@ -68,7 +60,7 @@ void ConfigManager::initializeDefaultConfig() {
         writeNamespace(NAMESPACE_NTC100K, doc);
     }
     
-    // NTC 10K: NAMESPACE_NTC10K
+    // NTC 10K: NAMESPACE_NTC10K - Solo para dispositivo analógico
     {
         StaticJsonDocument<JSON_DOC_SIZE> doc;
         doc[KEY_NTC10K_T1] = DEFAULT_T1_10K;
@@ -80,7 +72,7 @@ void ConfigManager::initializeDefaultConfig() {
         writeNamespace(NAMESPACE_NTC10K, doc);
     }
     
-    // Conductividad: NAMESPACE_COND
+    // Conductividad: NAMESPACE_COND - Solo para dispositivo analógico
     {
         StaticJsonDocument<JSON_DOC_SIZE> doc;
         doc[KEY_CONDUCT_CT] = CONDUCTIVITY_DEFAULT_TEMP;
@@ -94,7 +86,7 @@ void ConfigManager::initializeDefaultConfig() {
         writeNamespace(NAMESPACE_COND, doc);
     }
     
-    // pH: NAMESPACE_PH
+    // pH: NAMESPACE_PH - Solo para dispositivo analógico
     {
         StaticJsonDocument<JSON_DOC_SIZE> doc;
         doc[KEY_PH_V1] = PH_DEFAULT_V1;
@@ -106,11 +98,12 @@ void ConfigManager::initializeDefaultConfig() {
         doc[KEY_PH_CT] = PH_DEFAULT_TEMP;
         writeNamespace(NAMESPACE_PH, doc);
     }
+#endif
     
-    // Inicializar configuración de sensores
+    // Inicializar configuración de sensores - Común para todos los tipos
     initializeSensorConfigs();
     
-    // LoRa: NAMESPACE_LORAWAN
+    // LoRa: NAMESPACE_LORAWAN - Común para todos los tipos
     {
         StaticJsonDocument<JSON_DOC_SIZE> doc;
 
@@ -120,7 +113,6 @@ void ConfigManager::initializeDefaultConfig() {
         doc[KEY_LORA_NWK_KEY]      = DEFAULT_NWK_KEY;
         doc[KEY_LORA_APP_KEY]      = DEFAULT_APP_KEY;
         writeNamespace(NAMESPACE_LORAWAN, doc);
-
     }
 }
 
@@ -142,6 +134,9 @@ void ConfigManager::setSystemConfig(bool initialized, uint32_t sleepTime, const 
     doc[KEY_STATION_ID] = stationId;
     writeNamespace(NAMESPACE_SYSTEM, doc);
 }
+
+#ifdef DEVICE_TYPE_ANALOGIC
+// Implementación de métodos específicos para dispositivo analógico
 
 void ConfigManager::getNTC100KConfig(double& t1, double& r1, double& t2, double& r2, double& t3, double& r3) {
     StaticJsonDocument<JSON_DOC_SIZE> doc;
@@ -242,6 +237,7 @@ void ConfigManager::setPHConfig(float v1, float t1, float v2, float t2, float v3
     doc[KEY_PH_CT] = defaultTemp;
     writeNamespace(NAMESPACE_PH, doc);
 }
+#endif
 
 std::vector<SensorConfig> ConfigManager::getAllSensorConfigs() {
     std::vector<SensorConfig> configs;
@@ -270,6 +266,21 @@ std::vector<SensorConfig> ConfigManager::getAllSensorConfigs() {
     }
     
     return configs;
+}
+
+std::vector<SensorConfig> ConfigManager::getEnabledSensorConfigs() {
+    // Obtener todos los sensores configurados
+    std::vector<SensorConfig> allSensors = getAllSensorConfigs();
+    
+    // Filtrar solo los sensores habilitados
+    std::vector<SensorConfig> enabledSensors;
+    for (const auto& sensor : allSensors) {
+        if (sensor.enable && strlen(sensor.sensorId) > 0) {
+            enabledSensors.push_back(sensor);
+        }
+    }
+    
+    return enabledSensors;
 }
 
 void ConfigManager::initializeSensorConfigs() {
@@ -327,8 +338,6 @@ LoRaConfig ConfigManager::getLoRaConfig() {
     config.nwkKey     = doc[KEY_LORA_NWK_KEY]      | DEFAULT_NWK_KEY;
     config.appKey     = doc[KEY_LORA_APP_KEY]      | DEFAULT_APP_KEY;
     
-
-
     return config;
 }
 
@@ -337,13 +346,14 @@ void ConfigManager::setLoRaConfig(
     const String &devEUI, 
     const String &nwkKey, 
     const String &appKey) {
-
     StaticJsonDocument<JSON_DOC_SIZE> doc;
     readNamespace(NAMESPACE_LORAWAN, doc);
+    
     //FOR OTAA
     doc[KEY_LORA_JOIN_EUI]      = joinEUI;
     doc[KEY_LORA_DEV_EUI]       = devEUI;
     doc[KEY_LORA_NWK_KEY]      = nwkKey;
     doc[KEY_LORA_APP_KEY]      = appKey;
+    
     writeNamespace(NAMESPACE_LORAWAN, doc);
 }

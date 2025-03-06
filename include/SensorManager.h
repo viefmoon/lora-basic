@@ -2,6 +2,7 @@
 #define SENSOR_MANAGER_H
 
 #include <Arduino.h>
+#include <vector>
 #include "sensor_types.h"
 #include "RTCManager.h"
 #include "clsPCA9555.h"
@@ -9,11 +10,9 @@
 #include "MAX31865.h"
 #include <OneWire.h>
 #include <DallasTemperature.h>
+#include <SensirionI2cSht3x.h>
 
-// Necesitamos referenciar extern las variables y objetos globales
-// que se declaran/definen en el main.ino.
-// Esto permite que SensorManager.cpp pueda usarlas.
-
+// Variables y objetos globales declarados en main.cpp
 extern RTCManager rtcManager;
 extern PCA9555 ioExpander;
 extern PowerManager powerManager;
@@ -23,8 +22,10 @@ extern SPISettings spiRtdSettings;
 extern MAX31865_RTD rtd;
 extern OneWire oneWire;
 extern DallasTemperature dallasTemp;
+extern SensirionI2cSht3x sht30Sensor;
+
 /**
- * @brief Clase estática que maneja la inicialización y lecturas de todos los sensores.
+ * @brief Clase que maneja la inicialización y lecturas de todos los sensores.
  */
 class SensorManager {
   public:
@@ -35,27 +36,26 @@ class SensorManager {
     static void beginSensors();
 
     /**
-     * @brief Lee todos los sensores definidos en sensorConfigs y llena el array de lecturas.
-     * @param readings Array de lectura donde se guardarán los datos.
-     * @param numSensors Número de sensores a leer.
+     * @brief Devuelve la lectura de un sensor según su configuración.
      */
-    static void readAllSensors(SensorReading *readings, size_t numSensors);
-
-    /**
-     * @brief Construye un payload (en formato CSV, JSON, etc.) a partir de las lecturas de sensores.
-     * @param readings Array de lecturas.
-     * @param numSensors Número de sensores leídos.
-     * @return String con el payload formateado.
-     */
-    static String buildPayload(SensorReading *readings, size_t numSensors);
-
     static SensorReading getSensorReading(const SensorConfig& cfg);
 
+    /**
+     * @brief Lee el voltaje de la batería a través del pin analógico del ESP32.
+     * @return Voltaje de la batería en voltios, considerando el divisor de voltaje.
+     */
+    static float readBatteryVoltageADC();
+
   private:
+    // Métodos de lectura para cada sensor
     static float readRtdSensor();
     static float readDallasSensor();
+    static float readSht30Temperature();
+    static float readSht30Humidity();
+
+    // Método interno para determinar el valor de un sensor
     static float readSensorValue(const SensorConfig &cfg);
-    static void initializePreferences();
+
     static void initializeSPISSPins();
 };
 
