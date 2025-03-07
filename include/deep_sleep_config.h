@@ -15,7 +15,7 @@ extern const int numExclude;
 /**
  * @brief Configura los pines no utilizados en alta impedancia para reducir el consumo durante deep sleep.
  */
-void setUnusedPinsHighImpedance();
+void configurePinsForDeepSleep();
 
 /**
  * @brief Libera el estado de retención (hold) de los pines que fueron configurados en alta impedancia.

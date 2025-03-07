@@ -8,8 +8,9 @@
 const int excludePins[] = {
     // Pines de Strapping
     CONFIG_PIN,    //Usado para configurar y despertar de deepSleep
-    8,    // GPIO8
-    9,    // GPIO9
+    LORA_NSS_PIN,    // Pin NSS del módulo LoRa (debe mantenerse en alto durante deep sleep)
+    // 8,    // GPIO8
+    // 9,    // GPIO9
 
     // Pines de Flash SPI (NUNCA modificarlos para no afectar la comunicación con la memoria Flash)
     12,   // SPIHD
@@ -18,21 +19,19 @@ const int excludePins[] = {
     15,   // SPICS0
     16,   // SPID
     17,   // SPIQ
-
-    // // Pines para UART0 (si se usa para depuración, mantenerlos excluidos)
-    // 20,   // U0RXD (GPIO20) - Recibe datos (UART)
-    // 21,   // U0TXD (GPIO21) - Transmite datos (UART)
-
-    // Pines USB para depuración y/o programación (usados con otros propósitos)
-    // 18,   // USB D- (GPIO18)
-    // 19,   // USB D+ (GPIO19)
 };
 const int numExclude = sizeof(excludePins) / sizeof(excludePins[0]);
 
 /**
  * @brief Configura los pines no utilizados en alta impedancia para reducir el consumo durante deep sleep.
  */
-void setUnusedPinsHighImpedance() {
+void configurePinsForDeepSleep() {
+    // Configurar explícitamente LORA_NSS_PIN como salida en alto para mantener el chip select del módulo LoRa desactivado
+    gpio_reset_pin((gpio_num_t)LORA_NSS_PIN);
+    gpio_set_direction((gpio_num_t)LORA_NSS_PIN, GPIO_MODE_OUTPUT);
+    gpio_set_level((gpio_num_t)LORA_NSS_PIN, 1);  // Establecer en alto
+    gpio_hold_en((gpio_num_t)LORA_NSS_PIN);       // Mantener este estado durante el deep sleep
+    
     for (int pin = 0; pin < MAX_GPIO_PINS; ++pin) {
         bool excluded = false;
         for (int j = 0; j < numExclude; j++) {
@@ -60,6 +59,9 @@ void setUnusedPinsHighImpedance() {
  * Esto permite que los pines puedan ser reconfigurados adecuadamente tras salir del deep sleep.
  */
 void restoreUnusedPinsState() {
+    // Liberar específicamente el pin NSS de LoRa
+    gpio_hold_dis((gpio_num_t)LORA_NSS_PIN);
+    
     for (int pin = 0; pin < MAX_GPIO_PINS; ++pin) {
         bool excluded = false;
         for (int j = 0; j < numExclude; j++) {

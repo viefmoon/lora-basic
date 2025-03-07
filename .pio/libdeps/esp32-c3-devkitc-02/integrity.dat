@@ -1,11 +1,9 @@
-bblanchon/ArduinoJson@^6.21.4
-adafruit/Adafruit BusIO@^1.14.1
-BLE
-sensirion/Sensirion I2C SHT4x@^1.1.2
-jgromes/RadioLib@^6.6.0
-adafruit/RTClib@^2.1.1
-paulstoffregen/OneWire@^2.3.7
 sensirion/Sensirion I2C SHT3x@^1.0.1
-Wire
-SPI
+jgromes/RadioLib@^6.6.0
 milesburton/DallasTemperature@^3.11.0
+bblanchon/ArduinoJson@^6.21.4
+SPI
+adafruit/RTClib@^2.1.1
+BLE
+paulstoffregen/OneWire@^2.3.7
+Wire

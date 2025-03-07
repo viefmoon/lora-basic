@@ -307,15 +307,81 @@ void PCA9555::I2CSetValue(uint8_t address, uint8_t reg, uint8_t value){
 }
 
 void PCA9555::sleep() {
-    // Primero aseguramos que todos los pines estén en LOW
-    _valueRegister = 0x0000;  // Todos los pines en LOW
+    // 1) Prepara registros locales (16 bits) para la configuración y el valor de salida
+    //    Empezamos con todo en 0 (por defecto, consideraremos OUTPUT=0 y LOW=0).
+    uint16_t tempConfig = 0x0000;  // 0 => OUTPUT, 1 => INPUT
+    uint16_t tempOutput = 0x0000;  // 0 => LOW,    1 => HIGH
+
+#ifdef DEVICE_TYPE_BASIC
+    // Configuración para dispositivo BASIC
+    // Para los pines que sean INPUT (por ejemplo pin 2, 5, 6, 7, 10...15),
+    // ponemos su bit correspondiente en 1 dentro de tempConfig.
+    // Ejemplo: pin 2 como INPUT => set bit 2 de tempConfig a 1:
+    tempConfig |= (1 << 1);   // pin 1 => INPUT
+    tempConfig |= (1 << 2);   // pin 2 => INPUT
+    tempConfig |= (1 << 4);   // pin 4 => INPUT
+    tempConfig |= (1 << 5);   // pin 5 => INPUT
+    tempConfig |= (1 << 6);   // pin 6 => INPUT
+    tempConfig |= (1 << 11);  // pin 11 => INPUT
+    tempConfig |= (1 << 12);  // pin 12 => INPUT
+    tempConfig |= (1 << 13);  // pin 13 => INPUT
+    tempConfig |= (1 << 14);  // pin 14 => INPUT
+    tempConfig |= (1 << 15);  // pin 15 => INPUT
+    // Si no se pone un bit en 1 explícitamente, queda en 0 => OUTPUT.
+
+    // Para los pines que son OUTPUT y queramos poner en HIGH (p. ej. pin 1, 4, 9),
+    // establecemos el bit correspondiente en tempOutput:
+    tempOutput |= (1 << 3);  // pin 3 => HIGH //ss de pt100
+    // Los pines OUTPUT sin setear aquí quedan en LOW (por defecto tempOutput=0).
+#endif
+
+#ifdef DEVICE_TYPE_MODBUS
+    // Configuración para dispositivo MODBUS
+    // Para los pines que sean INPUT, ponemos su bit correspondiente en 1 dentro de tempConfig
+    tempConfig |= (1 << 2);   // pin 2 => INPUT
+    tempConfig |= (1 << 4);   // pin 4 => INPUT
+    tempConfig |= (1 << 5);   // pin 5 => INPUT
+    tempConfig |= (1 << 6);   // pin 6 => INPUT
+    tempConfig |= (1 << 11);  // pin 11 => INPUT
+    tempConfig |= (1 << 12);  // pin 12 => INPUT
+    tempConfig |= (1 << 13);  // pin 13 => INPUT
+    tempConfig |= (1 << 14);  // pin 14 => INPUT
+    tempConfig |= (1 << 15);  // pin 15 => INPUT
+    
+    // Para los pines que son OUTPUT y queramos poner en HIGH
+    tempOutput |= (1 << 3);   // pin 3 => HIGH //ss de pt100
+#endif
+
+#ifdef DEVICE_TYPE_ANALOGIC
+    // Configuración para dispositivo ANALOGIC
+    // Para los pines que sean INPUT, ponemos su bit correspondiente en 1 dentro de tempConfig
+    tempConfig |= (1 << 1);   // pin 1 => INPUT
+    tempConfig |= (1 << 2);   // pin 2 => INPUT
+    tempConfig |= (1 << 4);   // pin 4 => INPUT
+    tempConfig |= (1 << 5);   // pin 5 => INPUT
+    tempConfig |= (1 << 6);   // pin 6 => INPUT
+    tempConfig |= (1 << 10);  // pin 10 => INPUT //Entrada analógica
+    tempConfig |= (1 << 11);  // pin 11 => INPUT
+    tempConfig |= (1 << 12);  // pin 12 => INPUT
+    tempConfig |= (1 << 13);  // pin 13 => INPUT
+    tempConfig |= (1 << 14);  // pin 14 => INPUT
+    tempConfig |= (1 << 15);  // pin 15 => INPUT
+    
+    // Para los pines que son OUTPUT y queramos poner en HIGH
+    tempOutput |= (1 << 3);   // pin 3 => HIGH //ss de pt100
+    tempOutput |= (1 << 8);   // pin 8 => HIGH //Activación de circuito analógico
+#endif
+
+    // -------------------------------------------------------------
+    // 2) Volcamos estos valores a las variables miembros y escribimos en el PCA9555
+    //    Primero el registro de OUTPUT, luego el de CONFIG.
+    //    (OJO: cuando un pin es INPUT, da igual el bit de salida que pongas).
+    _valueRegister         = tempOutput;
+    _configurationRegister = tempConfig;
+
     I2CSetValue(_address, NXP_OUTPUT, _valueRegister_low);
     I2CSetValue(_address, NXP_OUTPUT + 1, _valueRegister_high);
-    
-    // Configuramos todos los pines como INPUT
-    _configurationRegister = 0xFFFF;  // 0xFFFF indica que todos los pines son INPUT
-    
-    // Escribimos la configuración final
+
     I2CSetValue(_address, NXP_CONFIG, _configurationRegister_low);
     I2CSetValue(_address, NXP_CONFIG + 1, _configurationRegister_high);
 }

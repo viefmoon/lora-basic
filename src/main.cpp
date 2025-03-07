@@ -8,8 +8,10 @@
 #include <Wire.h>
 #include <SPI.h>
 #include <Preferences.h>
+#if defined(DEVICE_TYPE_BASIC) || defined(DEVICE_TYPE_ANALOGIC)
 #include <OneWire.h>
 #include <DallasTemperature.h>
+#endif
 #include <vector>
 #include <ArduinoJson.h>
 #include <cmath>
@@ -22,7 +24,7 @@
 #include <RadioLib.h>
 #include "RTCManager.h"
 #include "sensor_types.h"
-#include "SensirionI2cSht4x.h"
+
 #include "SensorManager.h"
 #include "nvs_flash.h"
 #include "esp_sleep.h"
@@ -94,8 +96,10 @@ SensirionI2cSht3x sht30Sensor;
 SX1262 radio = new Module(LORA_NSS_PIN, LORA_DIO1_PIN, LORA_RST_PIN, LORA_BUSY_PIN, spi, spiRadioSettings);
 LoRaWANNode node(&radio, &Region, subBand);
 
+#if defined(DEVICE_TYPE_BASIC) || defined(DEVICE_TYPE_ANALOGIC)
 OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature dallasTemp(&oneWire);
+#endif
 
 RTC_DATA_ATTR uint16_t bootCount = 0;
 RTC_DATA_ATTR uint16_t bootCountSinceUnsuccessfulJoin = 0;
@@ -121,10 +125,6 @@ void goToDeepSleep() {
     // Apagar todos los reguladores
     powerManager.allPowerOff();
     
-    // Deshabilitar I2C y SPI
-    Wire.end();
-    spi.end();
-    
     // Flush Serial antes de dormir
     DEBUG_FLUSH();
     DEBUG_END();
@@ -132,13 +132,17 @@ void goToDeepSleep() {
     // Apagar módulos
     LoRaManager::prepareForSleep(&radio);
     btStop();
+
+        // Deshabilitar I2C y SPI
+    Wire.end();
+    spi.end();
     
     // Configurar el temporizador y GPIO para despertar
     esp_sleep_enable_timer_wakeup(timeToSleep * 1000000ULL);
     gpio_wakeup_enable((gpio_num_t)CONFIG_PIN, GPIO_INTR_LOW_LEVEL);
     esp_sleep_enable_gpio_wakeup();
     esp_deep_sleep_enable_gpio_wakeup(BIT(CONFIG_PIN), ESP_GPIO_WAKEUP_GPIO_LOW);
-    setUnusedPinsHighImpedance();
+    configurePinsForDeepSleep();
     
     // Entrar en deep sleep
     esp_deep_sleep_start();

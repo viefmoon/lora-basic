@@ -1,7 +1,9 @@
 #include "SensorManager.h"
 #include <Wire.h>
 #include <SPI.h>
+#if defined(DEVICE_TYPE_BASIC) || defined(DEVICE_TYPE_ANALOGIC)
 #include <DallasTemperature.h>
+#endif
 #include "MAX31865.h"
 #include "RTCManager.h"
 #include "sensor_types.h"
@@ -35,6 +37,7 @@ void SensorManager::beginSensors() {
                       faultClear, filter50Hz, lowTh, highTh);
     }
 
+#if defined(DEVICE_TYPE_BASIC) || defined(DEVICE_TYPE_ANALOGIC)
     // Inicializar DS18B20
     dallasTemp.begin();
     dallasTemp.setResolution(12);
@@ -42,6 +45,7 @@ void SensorManager::beginSensors() {
     dallasTemp.requestTemperatures();
     delay(750);
     dallasTemp.getTempCByIndex(0);
+#endif
 
     // Inicializar SHT30 (si lo usas en todo el sistema, lo dejas siempre)
     sht30Sensor.begin(Wire, SHT30_I2C_ADDR_44);
@@ -120,6 +124,7 @@ float SensorManager::readRtdSensor() {
     }
 }
 
+#if defined(DEVICE_TYPE_BASIC) || defined(DEVICE_TYPE_ANALOGIC)
 float SensorManager::readDallasSensor() {
     dallasTemp.requestTemperatures();
     float temp = dallasTemp.getTempCByIndex(0);
@@ -128,6 +133,7 @@ float SensorManager::readDallasSensor() {
     }
     return temp;
 }
+#endif
 
 float SensorManager::readSht30Temperature() {
     float temperature = 0.0f;
@@ -170,8 +176,10 @@ float SensorManager::readSensorValue(const SensorConfig &cfg) {
         case RTD:
             return readRtdSensor();
 
+#if defined(DEVICE_TYPE_BASIC) || defined(DEVICE_TYPE_ANALOGIC)
         case DS18B20:
             return readDallasSensor();
+#endif
             
         case S30_T:
             return readSht30Temperature();

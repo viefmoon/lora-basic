@@ -8,8 +8,10 @@
 #include "clsPCA9555.h"
 #include "PowerManager.h"
 #include "MAX31865.h"
+#if defined(DEVICE_TYPE_BASIC) || defined(DEVICE_TYPE_ANALOGIC)
 #include <OneWire.h>
 #include <DallasTemperature.h>
+#endif
 #include <SensirionI2cSht3x.h>
 
 // Variables y objetos globales declarados en main.cpp
@@ -22,8 +24,10 @@ extern SPISettings spiAdcSettings;
 #endif
 extern SPISettings spiRtdSettings;
 extern MAX31865_RTD rtd;
+#if defined(DEVICE_TYPE_BASIC) || defined(DEVICE_TYPE_ANALOGIC)
 extern OneWire oneWire;
 extern DallasTemperature dallasTemp;
+#endif
 extern SensirionI2cSht3x sht30Sensor;
 
 /**
@@ -51,7 +55,9 @@ class SensorManager {
   private:
     // Métodos de lectura para cada sensor
     static float readRtdSensor();
+#if defined(DEVICE_TYPE_BASIC) || defined(DEVICE_TYPE_ANALOGIC)
     static float readDallasSensor();
+#endif
     static float readSht30Temperature();
     static float readSht30Humidity();
 

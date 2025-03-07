@@ -2,9 +2,9 @@
 #define CONFIG_H
 
 // Descomentar solo UNO de los siguientes
-#define DEVICE_TYPE_BASIC
+//#define DEVICE_TYPE_BASIC
 //#define DEVICE_TYPE_ANALOGIC
-//#define DEVICE_TYPE_MODBUS
+#define DEVICE_TYPE_MODBUS
 
 // Configuración de depuración - Comentar para deshabilitar mensajes de depuración
 #define DEBUG_ENABLED
@@ -327,7 +327,6 @@ const double conversionFactor = (R1 + R2) / R1;
 #ifdef DEVICE_TYPE_MODBUS
 
 // Pines generales
-#define ONE_WIRE_BUS        0
 #define I2C_SDA_PIN         19
 #define I2C_SCL_PIN         18
 #define I2C_ADDRESS_PCA9555 0x20
@@ -341,6 +340,12 @@ const double conversionFactor = (R1 + R2) / R1;
 
 // PT100
 #define PT100_CS_PIN        P03
+
+// FlowSensor
+#define FLOW_SENSOR_PIN     0
+
+// Batería
+#define BATTERY_PIN         1
 
 // Modo Config
 #define CONFIG_PIN          2
@@ -391,31 +396,30 @@ const double conversionFactor = (R1 + R2) / R1;
 #define NAMESPACE_LORA_SESSION  "lorasession"
 
 // Claves
-#define KEY_INITIALIZED         "initialized"
-#define KEY_SLEEP_TIME          "sleep_time"
-#define KEY_STATION_ID          "stationId"
-#define KEY_DEVICE_ID           "deviceId"
-#define KEY_VOLT                "volt"
-#define KEY_SENSOR              "k"
-#define KEY_SENSOR_ID           "id"
+#define KEY_INITIALIZED                  "initialized"
+#define KEY_SLEEP_TIME                   "sleep_time"
+#define KEY_STATION_ID                   "stationId"
+#define KEY_DEVICE_ID                    "deviceId"
+#define KEY_VOLT                         "volt"
+#define KEY_SENSOR                       "k"
+#define KEY_SENSOR_ID                    "id"
 #define KEY_SENSOR_ID_TEMPERATURE_SENSOR "ts"
-#define KEY_SENSOR_TYPE         "t"
-#define KEY_SENSOR_CHANNEL      "ch"
-#define KEY_SENSOR_VALUE        "v"
-#define KEY_SENSOR_ENABLE       "e"
-#define KEY_LORA_JOIN_EUI       "joinEUI"
-#define KEY_LORA_DEV_EUI        "devEUI"
-#define KEY_LORA_NWK_KEY        "nwkKey"
-#define KEY_LORA_APP_KEY        "appKey"
-#define KEY_LORAWAN_SESSION     "lorawan_session"
+#define KEY_SENSOR_TYPE                  "t"
+#define KEY_SENSOR_CHANNEL               "ch"
+#define KEY_SENSOR_VALUE                 "v"
+#define KEY_SENSOR_ENABLE                "e"
+#define KEY_LORA_JOIN_EUI                "joinEUI"
+#define KEY_LORA_DEV_EUI                 "devEUI"
+#define KEY_LORA_NWK_KEY                 "nwkKey"
+#define KEY_LORA_APP_KEY                 "appKey"
+#define KEY_LORAWAN_SESSION              "lorawan_session"
 
 // Tamaños de documentos JSON - Centralizados
 #define JSON_DOC_SIZE_SMALL   300   // Para configuraciones simples
 #define JSON_DOC_SIZE_MEDIUM  1024  // Para la mayoría de configuraciones
 #define JSON_DOC_SIZE_LARGE   2048  // Para arrays grandes de sensores o configuraciones complejas
 
-// Batería
-#define BATTERY_PIN             1
+// Power management
 #define POWER_3V3_PIN           P00
 #define POWER_12V_PIN           P01
 #define POWER_STABILIZE_DELAY   20
