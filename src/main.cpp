@@ -16,6 +16,7 @@
 
 // Bibliotecas específicas del proyecto
 #include "config.h"
+#include "debug.h"
 #include "PowerManager.h"
 #include "MAX31865.h"
 #include <RadioLib.h>
@@ -65,10 +66,9 @@ void initHardware();
    Objetos Globales y Variables
 -------------------------------------------------------------------------------------------------*/
 
-SensirionI2cSht3x sht30Sensor;
 
-const LoRaWANBand_t Region = US915;
-const uint8_t subBand = 2;  // For US915, change this to 2, otherwise leave on 0
+const LoRaWANBand_t Region = LORA_REGION;
+const uint8_t subBand = LORA_SUBBAND;
 
 Preferences preferences;       // Almacenamiento de preferencias en NVS
 
@@ -82,11 +82,14 @@ PCA9555 ioExpander(I2C_ADDRESS_PCA9555, I2C_SDA_PIN, I2C_SCL_PIN);
 PowerManager powerManager(ioExpander);
 
 SPIClass spi(FSPI);
+#ifdef DEVICE_TYPE_ANALOGIC
 SPISettings spiAdcSettings(SPI_ADC_CLOCK, MSBFIRST, SPI_MODE1);
+#endif
 SPISettings spiRtdSettings(SPI_RTD_CLOCK, MSBFIRST, SPI_MODE1);
 SPISettings spiRadioSettings(SPI_RADIO_CLOCK, MSBFIRST, SPI_MODE0);
 
 MAX31865_RTD rtd(MAX31865_RTD::RTD_PT100, spi, spiRtdSettings, ioExpander, PT100_CS_PIN);
+SensirionI2cSht3x sht30Sensor; 
 
 SX1262 radio = new Module(LORA_NSS_PIN, LORA_DIO1_PIN, LORA_RST_PIN, LORA_BUSY_PIN, spi, spiRadioSettings);
 LoRaWANNode node(&radio, &Region, subBand);
@@ -123,8 +126,8 @@ void goToDeepSleep() {
     spi.end();
     
     // Flush Serial antes de dormir
-    Serial.flush();
-    Serial.end();
+    DEBUG_FLUSH();
+    DEBUG_END();
     
     // Apagar módulos
     LoRaManager::prepareForSleep(&radio);
@@ -147,7 +150,7 @@ void goToDeepSleep() {
  */
 void checkConfigMode() {
     if (digitalRead(CONFIG_PIN) == LOW) {
-        Serial.println("Modo configuración activado");
+        DEBUG_PRINTLN("Modo configuración activado");
         unsigned long startTime = millis();
         while (digitalRead(CONFIG_PIN) == LOW) {
             if (millis() - startTime >= CONFIG_TRIGGER_TIME) {
@@ -197,14 +200,17 @@ void initHardware() {
     delay(1);
     sht30Sensor.softReset();
     delay(100);
-
+    
+    // Inicializar PCA9555 para expansión de I/O
     if (!ioExpander.begin()) {
-        Serial.println("Error al inicializar PCA9555");
+        DEBUG_PRINTLN("Error al inicializar PCA9555");
+        return;
     }
-
-    // Inicializar PowerManager
+    
+    // Inicializar PowerManager para control de energía
     if (!powerManager.begin()) {
-        Serial.println("Error al inicializar PowerManager");
+        DEBUG_PRINTLN("Error al inicializar PowerManager");
+        return;
     }
 }
 
@@ -214,7 +220,7 @@ void initHardware() {
    y recupera configuraciones previas del sistema.
 -------------------------------------------------------------------------------------------------*/
 void setup() {
-    Serial.begin(115200);
+    DEBUG_BEGIN(115200);
     
     // Liberar el hold de los pines no excluidos si se está saliendo de deep sleep.
     restoreUnusedPinsState();
@@ -227,7 +233,7 @@ void setup() {
     // nvs_flash_init();
 
     if (!ConfigManager::checkInitialized()) {
-        Serial.println("Primera ejecución detectada. Inicializando configuración...");
+        DEBUG_PRINTLN("Primera ejecución detectada. Inicializando configuración...");
         ConfigManager::initializeDefaultConfig();
     }
     
@@ -237,7 +243,7 @@ void setup() {
     checkConfigMode();
 
     if (!rtcManager.begin()) {
-        Serial.println("No se pudo encontrar el RTC");
+        DEBUG_PRINTLN("No se pudo encontrar el RTC");
     }
 
     powerManager.power3V3On();
@@ -245,13 +251,13 @@ void setup() {
     
     int16_t state = radio.begin();
     if (state != RADIOLIB_ERR_NONE) {
-        Serial.printf("Error iniciando radio: %d\n", state);
+        DEBUG_PRINTF("Error iniciando radio: %d\n", state);
     }
 
     // Activar el nodo usando la nueva función
     state = LoRaManager::lwActivate(node);
     if (state != RADIOLIB_LORAWAN_NEW_SESSION && state != RADIOLIB_LORAWAN_SESSION_RESTORED) {
-        Serial.printf("Error en la activación LoRaWAN: %d\n", state);
+        DEBUG_PRINTF("Error en la activación LoRaWAN: %d\n", state);
         goToDeepSleep();
         return;
     }

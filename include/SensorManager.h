@@ -17,7 +17,9 @@ extern RTCManager rtcManager;
 extern PCA9555 ioExpander;
 extern PowerManager powerManager;
 extern SPIClass spi;
+#ifdef DEVICE_TYPE_ANALOGIC
 extern SPISettings spiAdcSettings;
+#endif
 extern SPISettings spiRtdSettings;
 extern MAX31865_RTD rtd;
 extern OneWire oneWire;
@@ -57,6 +59,13 @@ class SensorManager {
     static float readSensorValue(const SensorConfig &cfg);
 
     static void initializeSPISSPins();
+
+    /**
+     * @brief Redondea un valor flotante a un máximo de 3 decimales.
+     *        Si el valor tiene menos de 3 decimales, se conserva.
+     *        Si tiene más, se redondea a 3.
+     */
+    static float roundTo3Decimals(float value);
 };
 
 #endif // SENSOR_MANAGER_H

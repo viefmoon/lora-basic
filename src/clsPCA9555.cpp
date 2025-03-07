@@ -41,6 +41,7 @@
 
 #include "clsPCA9555.h"
 #include "Wire.h"
+#include "debug.h"
 
 PCA9555* PCA9555::instancePointer = 0;
 
@@ -106,15 +107,15 @@ bool PCA9555::begin() {
     }
 
     // Solo mostrar error después de todos los intentos fallidos
-    Serial.print("Error al inicializar PCA9555 en la dirección 0x");
-    Serial.print(_address, HEX);
-    Serial.print(": ");
+    DEBUG_PRINT("Error al inicializar PCA9555 en la dirección 0x");
+    DEBUG_PRINT(_address, HEX);
+    DEBUG_PRINT(": ");
     switch (_error) {
-        case 1: Serial.println("Datos demasiado largos para el búfer de envío"); break;
-        case 2: Serial.println("Dirección NACK recibida en la transmisión"); break;
-        case 3: Serial.println("Datos NACK recibidos en la transmisión"); break;
-        case 4: Serial.println("Otro error"); break;
-        default: Serial.println("Error desconocido"); break;
+        case 1: DEBUG_PRINTLN("Datos demasiado largos para el búfer de envío"); break;
+        case 2: DEBUG_PRINTLN("Dirección NACK recibida en la transmisión"); break;
+        case 3: DEBUG_PRINTLN("Datos NACK recibidos en la transmisión"); break;
+        case 4: DEBUG_PRINTLN("Otro error"); break;
+        default: DEBUG_PRINTLN("Error desconocido"); break;
     }
     
     return false;

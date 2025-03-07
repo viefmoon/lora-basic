@@ -70,7 +70,9 @@ void SensorManager::initializeSPISSPins() {
 }
 
 // -----------------------------------------------------------------------------
+// Lectura de batería (difiere según el tipo de dispositivo)
 
+#if defined(DEVICE_TYPE_ANALOGIC)
 float SensorManager::readBatteryVoltageADC() {
     // Configurar la resolución del ADC (0-4095 para 12 bits)
     analogReadResolution(12);
@@ -84,10 +86,30 @@ float SensorManager::readBatteryVoltageADC() {
     // Aplicar el factor de conversión del divisor de voltaje (R1 y R2)
     float batteryVoltage = voltage * conversionFactor;
     
-    return batteryVoltage;
+    // Redondear a 3 decimales si es necesario
+    return roundTo3Decimals(batteryVoltage);
 }
+#elif defined(DEVICE_TYPE_BASIC) || defined(DEVICE_TYPE_MODBUS)
+float SensorManager::readBatteryVoltageADC() {
+    // Configurar la resolución del ADC (0-4095 para 12 bits)
+    analogReadResolution(12);
+    
+    // Realizar una única lectura
+    int reading = analogRead(BATTERY_PIN);
+    
+    // Convertir la lectura a voltaje (ESP32 ADC 0-3.3V)
+    float voltage = (reading / 4095.0f) * 3.3f;
+    
+    // Aplicar el factor de conversión del divisor de voltaje (R1 y R2)
+    float batteryVoltage = voltage * conversionFactor;
+    
+    // Redondear a 3 decimales si es necesario
+    return roundTo3Decimals(batteryVoltage);
+}
+#endif
 
 // -----------------------------------------------------------------------------
+// Lecturas de sensores
 
 float SensorManager::readRtdSensor() {
     uint8_t status = rtd.read_all();
@@ -107,11 +129,6 @@ float SensorManager::readDallasSensor() {
     return temp;
 }
 
-// -----------------------------------------------------------------------------
-
-/**
- * @brief Lee el sensor SHT30 en modo single-shot y devuelve la temperatura.
- */
 float SensorManager::readSht30Temperature() {
     float temperature = 0.0f;
     float humidity = 0.0f;
@@ -120,14 +137,11 @@ float SensorManager::readSht30Temperature() {
                                                temperature, humidity);
     delay(20);
     if (error != NO_ERROR) {
-            return NAN;
-        }
+        return NAN;
+    }
     return temperature;
 }
 
-/**
- * @brief Lee el sensor SHT30 en modo single-shot y devuelve la humedad.
- */
 float SensorManager::readSht30Humidity() {
     float temperature = 0.0f;
     float humidity = 0.0f;
@@ -136,14 +150,11 @@ float SensorManager::readSht30Humidity() {
                                                temperature, humidity);
     delay(20);
     if (error != NO_ERROR) {
-            return NAN;
-        }
+        return NAN;
+    }
     return humidity;
 }
 
-/**
- * @brief Función interna que lee el valor de un sensor.
- */
 float SensorManager::readSensorValue(const SensorConfig &cfg) {
     switch (cfg.type) {
         case N100K:
@@ -173,17 +184,25 @@ float SensorManager::readSensorValue(const SensorConfig &cfg) {
     }
 }
 
-// -----------------------------------------------------------------------------
-
-/**
- * @brief Devuelve la lectura de un sensor según su configuración.
- */
 SensorReading SensorManager::getSensorReading(const SensorConfig &cfg) {
     SensorReading reading;
     strncpy(reading.sensorId, cfg.sensorId, sizeof(reading.sensorId) - 1);
     reading.sensorId[sizeof(reading.sensorId) - 1] = '\0';  // Asegurar terminación null
     reading.type = cfg.type;
-    reading.value = readSensorValue(cfg);
+    
+    // Obtenemos la lectura cruda...
+    float rawValue = readSensorValue(cfg);
+
+    // ...y ahora la redondeamos a máximo 3 decimales.
+    reading.value = roundTo3Decimals(rawValue);
     
     return reading;
+}
+
+// -----------------------------------------------------------------------------
+// Implementación de la función de redondeo
+float SensorManager::roundTo3Decimals(float value) {
+    // Multiplicamos por 1000, redondeamos y volvemos a dividir por 1000
+    // para obtener un float con máximo 3 decimales.
+    return roundf(value * 1000.0f) / 1000.0f;
 }

@@ -13,6 +13,5 @@ bool parseEUIString(const char* euiStr, uint64_t* eui);
  * @param decimals Número máximo de decimales permitidos.
  * @return Valor redondeado o el valor original si ya tiene la precisión requerida.
  */
-double roundValue(double value, int decimals);
 
 #endif // UTILITIES_H

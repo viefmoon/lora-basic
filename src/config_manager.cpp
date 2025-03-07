@@ -7,9 +7,7 @@
 #include <Arduino.h> // Incluido para usar Serial
 
 // Funciones auxiliares para leer y escribir el JSON completo en cada namespace.
-static const size_t JSON_DOC_SIZE = 1024;
-
-static void writeNamespace(const char* ns, const StaticJsonDocument<JSON_DOC_SIZE>& doc) {
+static void writeNamespace(const char* ns, const StaticJsonDocument<JSON_DOC_SIZE_MEDIUM>& doc) {
     Preferences prefs;
     prefs.begin(ns, false);
     String jsonString;
@@ -19,7 +17,7 @@ static void writeNamespace(const char* ns, const StaticJsonDocument<JSON_DOC_SIZ
     prefs.end();
 }
 
-static void readNamespace(const char* ns, StaticJsonDocument<JSON_DOC_SIZE>& doc) {
+static void readNamespace(const char* ns, StaticJsonDocument<JSON_DOC_SIZE_MEDIUM>& doc) {
     Preferences prefs;
     prefs.begin(ns, true);
     String jsonString = prefs.getString(ns, "{}");
@@ -30,7 +28,7 @@ static void readNamespace(const char* ns, StaticJsonDocument<JSON_DOC_SIZE>& doc
 const SensorConfig ConfigManager::defaultConfigs[] = DEFAULT_SENSOR_CONFIGS;
 
 bool ConfigManager::checkInitialized() {
-    StaticJsonDocument<JSON_DOC_SIZE> doc;
+    StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> doc;
     readNamespace(NAMESPACE_SYSTEM, doc);
     return doc[KEY_INITIALIZED] | false;
 }
@@ -39,9 +37,9 @@ void ConfigManager::initializeDefaultConfig() {
     // Sistema unificado: NAMESPACE_SYSTEM (incluye system, sleep y device)
     // Común para todos los tipos de dispositivo
     {
-        StaticJsonDocument<JSON_DOC_SIZE> doc;
+        StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> doc;
         doc[KEY_STATION_ID] = DEFAULT_STATION_ID;
-        doc[KEY_INITIALIZED] = VALUE_INITIALIZED;
+        doc[KEY_INITIALIZED] = true;
         doc[KEY_SLEEP_TIME] = DEFAULT_TIME_TO_SLEEP;
         doc[KEY_DEVICE_ID] = DEFAULT_DEVICE_ID;
         writeNamespace(NAMESPACE_SYSTEM, doc);
@@ -50,7 +48,7 @@ void ConfigManager::initializeDefaultConfig() {
 #ifdef DEVICE_TYPE_ANALOGIC
     // NTC 100K: NAMESPACE_NTC100K - Solo para dispositivo analógico
     {
-        StaticJsonDocument<JSON_DOC_SIZE> doc;
+        StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> doc;
         doc[KEY_NTC100K_T1] = DEFAULT_T1_100K;
         doc[KEY_NTC100K_R1] = DEFAULT_R1_100K;
         doc[KEY_NTC100K_T2] = DEFAULT_T2_100K;
@@ -62,7 +60,7 @@ void ConfigManager::initializeDefaultConfig() {
     
     // NTC 10K: NAMESPACE_NTC10K - Solo para dispositivo analógico
     {
-        StaticJsonDocument<JSON_DOC_SIZE> doc;
+        StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> doc;
         doc[KEY_NTC10K_T1] = DEFAULT_T1_10K;
         doc[KEY_NTC10K_R1] = DEFAULT_R1_10K;
         doc[KEY_NTC10K_T2] = DEFAULT_T2_10K;
@@ -74,7 +72,7 @@ void ConfigManager::initializeDefaultConfig() {
     
     // Conductividad: NAMESPACE_COND - Solo para dispositivo analógico
     {
-        StaticJsonDocument<JSON_DOC_SIZE> doc;
+        StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> doc;
         doc[KEY_CONDUCT_CT] = CONDUCTIVITY_DEFAULT_TEMP;
         doc[KEY_CONDUCT_CC] = TEMP_COEF_COMPENSATION;
         doc[KEY_CONDUCT_V1] = CONDUCTIVITY_DEFAULT_V1;
@@ -88,7 +86,7 @@ void ConfigManager::initializeDefaultConfig() {
     
     // pH: NAMESPACE_PH - Solo para dispositivo analógico
     {
-        StaticJsonDocument<JSON_DOC_SIZE> doc;
+        StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> doc;
         doc[KEY_PH_V1] = PH_DEFAULT_V1;
         doc[KEY_PH_T1] = PH_DEFAULT_T1;
         doc[KEY_PH_V2] = PH_DEFAULT_V2;
@@ -105,7 +103,7 @@ void ConfigManager::initializeDefaultConfig() {
     
     // LoRa: NAMESPACE_LORAWAN - Común para todos los tipos
     {
-        StaticJsonDocument<JSON_DOC_SIZE> doc;
+        StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> doc;
 
         //FOR OTAA
         doc[KEY_LORA_JOIN_EUI]      = DEFAULT_JOIN_EUI;
@@ -117,7 +115,7 @@ void ConfigManager::initializeDefaultConfig() {
 }
 
 void ConfigManager::getSystemConfig(bool &initialized, uint32_t &sleepTime, String &deviceId, String &stationId) {
-    StaticJsonDocument<JSON_DOC_SIZE> doc;
+    StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> doc;
     readNamespace(NAMESPACE_SYSTEM, doc);
     initialized = doc[KEY_INITIALIZED] | false;
     sleepTime = doc[KEY_SLEEP_TIME] | DEFAULT_TIME_TO_SLEEP;
@@ -126,7 +124,7 @@ void ConfigManager::getSystemConfig(bool &initialized, uint32_t &sleepTime, Stri
 }
 
 void ConfigManager::setSystemConfig(bool initialized, uint32_t sleepTime, const String &deviceId, const String &stationId) {
-    StaticJsonDocument<JSON_DOC_SIZE> doc;
+    StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> doc;
     readNamespace(NAMESPACE_SYSTEM, doc);
     doc[KEY_INITIALIZED] = initialized;
     doc[KEY_SLEEP_TIME] = sleepTime;
@@ -139,7 +137,7 @@ void ConfigManager::setSystemConfig(bool initialized, uint32_t sleepTime, const 
 // Implementación de métodos específicos para dispositivo analógico
 
 void ConfigManager::getNTC100KConfig(double& t1, double& r1, double& t2, double& r2, double& t3, double& r3) {
-    StaticJsonDocument<JSON_DOC_SIZE> doc;
+    StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> doc;
     readNamespace(NAMESPACE_NTC100K, doc);
     t1 = doc[KEY_NTC100K_T1] | DEFAULT_T1_100K;
     r1 = doc[KEY_NTC100K_R1] | DEFAULT_R1_100K;
@@ -150,7 +148,7 @@ void ConfigManager::getNTC100KConfig(double& t1, double& r1, double& t2, double&
 }
 
 void ConfigManager::setNTC100KConfig(double t1, double r1, double t2, double r2, double t3, double r3) {
-    StaticJsonDocument<JSON_DOC_SIZE> doc;
+    StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> doc;
     readNamespace(NAMESPACE_NTC100K, doc);
     doc[KEY_NTC100K_T1] = t1;
     doc[KEY_NTC100K_R1] = r1;
@@ -162,7 +160,7 @@ void ConfigManager::setNTC100KConfig(double t1, double r1, double t2, double r2,
 }
 
 void ConfigManager::getNTC10KConfig(double& t1, double& r1, double& t2, double& r2, double& t3, double& r3) {
-    StaticJsonDocument<JSON_DOC_SIZE> doc;
+    StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> doc;
     readNamespace(NAMESPACE_NTC10K, doc);
     t1 = doc[KEY_NTC10K_T1] | DEFAULT_T1_10K;
     r1 = doc[KEY_NTC10K_R1] | DEFAULT_R1_10K;
@@ -173,7 +171,7 @@ void ConfigManager::getNTC10KConfig(double& t1, double& r1, double& t2, double& 
 }
 
 void ConfigManager::setNTC10KConfig(double t1, double r1, double t2, double r2, double t3, double r3) {
-    StaticJsonDocument<JSON_DOC_SIZE> doc;
+    StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> doc;
     readNamespace(NAMESPACE_NTC10K, doc);
     doc[KEY_NTC10K_T1] = t1;
     doc[KEY_NTC10K_R1] = r1;
@@ -186,7 +184,7 @@ void ConfigManager::setNTC10KConfig(double t1, double r1, double t2, double r2, 
 
 void ConfigManager::getConductivityConfig(float& calTemp, float& coefComp, 
                                            float& v1, float& t1, float& v2, float& t2, float& v3, float& t3) {
-    StaticJsonDocument<JSON_DOC_SIZE> doc;
+    StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> doc;
     readNamespace(NAMESPACE_COND, doc);
     calTemp = doc[KEY_CONDUCT_CT] | CONDUCTIVITY_DEFAULT_TEMP;
     coefComp = doc[KEY_CONDUCT_CC] | TEMP_COEF_COMPENSATION;
@@ -200,7 +198,7 @@ void ConfigManager::getConductivityConfig(float& calTemp, float& coefComp,
 
 void ConfigManager::setConductivityConfig(float calTemp, float coefComp,
                                            float v1, float t1, float v2, float t2, float v3, float t3) {
-    StaticJsonDocument<JSON_DOC_SIZE> doc;
+    StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> doc;
     readNamespace(NAMESPACE_COND, doc);
     doc[KEY_CONDUCT_CT] = calTemp;
     doc[KEY_CONDUCT_CC] = coefComp;
@@ -214,7 +212,7 @@ void ConfigManager::setConductivityConfig(float calTemp, float coefComp,
 }
 
 void ConfigManager::getPHConfig(float& v1, float& t1, float& v2, float& t2, float& v3, float& t3, float& defaultTemp) {
-    StaticJsonDocument<JSON_DOC_SIZE> doc;
+    StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> doc;
     readNamespace(NAMESPACE_PH, doc);
     v1 = doc[KEY_PH_V1] | PH_DEFAULT_V1;
     t1 = doc[KEY_PH_T1] | PH_DEFAULT_T1;
@@ -226,7 +224,7 @@ void ConfigManager::getPHConfig(float& v1, float& t1, float& v2, float& t2, floa
 }
 
 void ConfigManager::setPHConfig(float v1, float t1, float v2, float t2, float v3, float t3, float defaultTemp) {
-    StaticJsonDocument<JSON_DOC_SIZE> doc;
+    StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> doc;
     readNamespace(NAMESPACE_PH, doc);
     doc[KEY_PH_V1] = v1;
     doc[KEY_PH_T1] = t1;
@@ -241,7 +239,7 @@ void ConfigManager::setPHConfig(float v1, float t1, float v2, float t2, float v3
 
 std::vector<SensorConfig> ConfigManager::getAllSensorConfigs() {
     std::vector<SensorConfig> configs;
-    StaticJsonDocument<JSON_DOC_SIZE> doc;
+    StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> doc;
     readNamespace(NAMESPACE_SENSORS, doc);
     
     if (!doc.is<JsonArray>()) {
@@ -286,7 +284,7 @@ std::vector<SensorConfig> ConfigManager::getEnabledSensorConfigs() {
 void ConfigManager::initializeSensorConfigs() {
     Preferences prefs;
     prefs.begin(NAMESPACE_SENSORS, false);
-    StaticJsonDocument<JSON_DOC_SIZE> doc;
+    StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> doc;
     JsonArray sensorArray = doc.to<JsonArray>(); // Array raíz
 
     for (const auto& config : ConfigManager::defaultConfigs) {
@@ -309,7 +307,7 @@ void ConfigManager::initializeSensorConfigs() {
 void ConfigManager::setSensorsConfigs(const std::vector<SensorConfig>& configs) {
     Preferences prefs;
     prefs.begin(NAMESPACE_SENSORS, false);
-    StaticJsonDocument<JSON_DOC_SIZE> doc;
+    StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> doc;
     JsonArray sensorArray = doc.to<JsonArray>();
     
     for (const auto& sensor : configs) {
@@ -328,7 +326,7 @@ void ConfigManager::setSensorsConfigs(const std::vector<SensorConfig>& configs) 
 }
 
 LoRaConfig ConfigManager::getLoRaConfig() {
-    StaticJsonDocument<JSON_DOC_SIZE> doc;
+    StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> doc;
     readNamespace(NAMESPACE_LORAWAN, doc);
     
     LoRaConfig config;
@@ -346,7 +344,7 @@ void ConfigManager::setLoRaConfig(
     const String &devEUI, 
     const String &nwkKey, 
     const String &appKey) {
-    StaticJsonDocument<JSON_DOC_SIZE> doc;
+    StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> doc;
     readNamespace(NAMESPACE_LORAWAN, doc);
     
     //FOR OTAA

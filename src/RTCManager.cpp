@@ -1,14 +1,26 @@
 #include "RTCManager.h"
+#include "debug.h"
 
 RTCManager::RTCManager() {}
 
 bool RTCManager::begin() {
-    return rtc.begin();
+    // Inicializar el RTC
+    if (!rtc.begin()) {
+        return false;
+    }
+    
+    // Configurar el RTC con la hora de compilación si no está configurado
+    if (rtc.lostPower()) {
+        rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+        DEBUG_PRINTLN("RTC configurado con hora de compilación");
+    }
+    
+    return true;
 }
 
 void RTCManager::setFallbackDateTime() {
     rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
-    Serial.println("RTC configurado con hora de compilación");
+    DEBUG_PRINTLN("RTC configurado con hora de compilación");
 }
 
 DateTime RTCManager::getCurrentTime() {
@@ -18,38 +30,36 @@ DateTime RTCManager::getCurrentTime() {
 void RTCManager::printDateTime() {
     DateTime currentTime = getCurrentTime();
     
-    Serial.print(currentTime.year(), DEC);
-    Serial.print('/');
-    Serial.print(currentTime.month(), DEC);
-    Serial.print('/');
-    Serial.print(currentTime.day(), DEC);
-    Serial.print(" ");
-    Serial.print(currentTime.hour(), DEC);
-    Serial.print(':');
-    Serial.print(currentTime.minute(), DEC);
-    Serial.print(':');
-    Serial.println(currentTime.second(), DEC);
+    DEBUG_PRINT(currentTime.year(), DEC);
+    DEBUG_PRINT('/');
+    DEBUG_PRINT(currentTime.month(), DEC);
+    DEBUG_PRINT('/');
+    DEBUG_PRINT(currentTime.day(), DEC);
+    DEBUG_PRINT(" ");
+    DEBUG_PRINT(currentTime.hour(), DEC);
+    DEBUG_PRINT(':');
+    DEBUG_PRINT(currentTime.minute(), DEC);
+    DEBUG_PRINT(':');
+    DEBUG_PRINTLN(currentTime.second(), DEC);
 }
 
 uint32_t RTCManager::getEpochTime() {
-    DateTime now = getCurrentTime();
-    return now.unixtime();
+    return rtc.now().unixtime();
 }
 
-
 bool RTCManager::setTimeFromServer(uint32_t unixTime, uint8_t fraction) {
-    // Ajustar el RTC con el tiempo Unix directamente
-    DateTime newTime(unixTime);
-    rtc.adjust(newTime);
+    // Convertir el tiempo unix a DateTime
+    DateTime serverTime(unixTime);
     
-    // Verificar que el tiempo se haya establecido correctamente
-    DateTime currentTime = rtc.now();
-    if (abs((long)(currentTime.unixtime() - unixTime)) <= 1) {
-        Serial.println("RTC actualizado exitosamente con tiempo del servidor");
-        printDateTime();
+    // Ajustar el RTC con el tiempo del servidor
+    rtc.adjust(serverTime);
+    
+    // Verificar si se ajustó correctamente
+    if (abs((int32_t)rtc.now().unixtime() - (int32_t)unixTime) < 10) {
+        DEBUG_PRINTLN("RTC actualizado exitosamente con tiempo del servidor");
         return true;
     }
     
-    Serial.println("Error al actualizar RTC con tiempo del servidor");
+    DEBUG_PRINTLN("Error al actualizar RTC con tiempo del servidor");
     return false;
 }

@@ -49,21 +49,3 @@ bool parseEUIString(const char* euiStr, uint64_t* eui) {
     
     return true;
 } 
-
-/**
- * @brief Redondea un valor a un número específico de decimales, solo si el valor 
- *        realmente tiene más decimales que el límite indicado.
- * @param value Valor a redondear.
- * @param decimals Número máximo de decimales permitidos.
- * @return Valor redondeado o el valor original si ya tiene la precisión requerida.
- */
-double roundValue(double value, int decimals) {
-    double factor = pow(10.0, decimals);
-    double rounded = round(value * factor) / factor;
-    
-    // Si la diferencia es insignificante, se entiende que el valor no tenía más decimales
-    if (fabs(rounded - value) < 1e-9) {  
-        return value;
-    }
-    return rounded;
-}

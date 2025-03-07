@@ -1,16 +1,13 @@
 #include "driver/gpio.h"
 #include "esp_sleep.h"
 #include "deep_sleep_config.h"
+#include "config.h"
 
 // Lista de pines a excluir de la configuración de alta impedancia.
 // Los comentarios indican su función. Puedes descomentar aquellos que no desees modificar.
 const int excludePins[] = {
-    // Pines de cristal de 32kHz (no usados en este proyecto)    
-    // 1,    // XTAL_32K_P
-    // 0,    // XTAL_32K_N
-
-    // Pines de Strapping (para definir el modo de arranque, no modificar si son necesarios)
-    2,    // GPIO2
+    // Pines de Strapping
+    CONFIG_PIN,    //Usado para configurar y despertar de deepSleep
     8,    // GPIO8
     9,    // GPIO9
 
@@ -22,9 +19,9 @@ const int excludePins[] = {
     16,   // SPID
     17,   // SPIQ
 
-    // Pines para UART0 (si se usa para depuración, mantenerlos excluidos)
-    20,   // U0RXD (GPIO20) - Recibe datos (UART)
-    21,   // U0TXD (GPIO21) - Transmite datos (UART)
+    // // Pines para UART0 (si se usa para depuración, mantenerlos excluidos)
+    // 20,   // U0RXD (GPIO20) - Recibe datos (UART)
+    // 21,   // U0TXD (GPIO21) - Transmite datos (UART)
 
     // Pines USB para depuración y/o programación (usados con otros propósitos)
     // 18,   // USB D- (GPIO18)

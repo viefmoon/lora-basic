@@ -5,6 +5,7 @@
 
 #include "LoRaManager.h"
 #include <Preferences.h>
+#include "debug.h"
 
 // Inicialización de variables estáticas
 LoRaWANNode* LoRaManager::node = nullptr;
@@ -19,7 +20,7 @@ int16_t LoRaManager::begin(SX1262* radio, const LoRaWANBand_t* region, uint8_t s
     radioModule = radio;
     int16_t state = radioModule->begin();
     if (state != RADIOLIB_ERR_NONE) {
-        Serial.printf("Error iniciando radio: %d\n", state);
+        DEBUG_PRINTF("Error iniciando radio: %d\n", state);
         return state;
     }
     
@@ -39,7 +40,7 @@ int16_t LoRaManager::lwActivate(LoRaWANNode& node) {
     uint64_t joinEUI = 0, devEUI = 0;
     if (!parseEUIString(loraConfig.joinEUI.c_str(), &joinEUI) ||
         !parseEUIString(loraConfig.devEUI.c_str(), &devEUI)) {
-        Serial.println("Error al parsear EUIs");
+        DEBUG_PRINTLN("Error al parsear EUIs");
         return state;
     }
     
@@ -51,7 +52,7 @@ int16_t LoRaManager::lwActivate(LoRaWANNode& node) {
     // Configurar la sesión OTAA
     node.beginOTAA(joinEUI, devEUI, nwkKey, appKey);
 
-    Serial.println("Recuperando nonces y sesión LoRaWAN");
+    DEBUG_PRINTLN("Recuperando nonces y sesión LoRaWAN");
     store.begin("radiolib");
 
     // Intentar restaurar nonces si existen
@@ -65,7 +66,7 @@ int16_t LoRaManager::lwActivate(LoRaWANNode& node) {
             state = node.setBufferSession(LWsession);
             
             if (state == RADIOLIB_ERR_NONE) {
-                Serial.println("Sesión restaurada exitosamente - activando");
+                DEBUG_PRINTLN("Sesión restaurada exitosamente - activando");
                 state = node.activateOTAA();
                 
                 if (state == RADIOLIB_LORAWAN_SESSION_RESTORED) {
@@ -75,18 +76,18 @@ int16_t LoRaManager::lwActivate(LoRaWANNode& node) {
             }
         }
     } else {
-        Serial.println("No hay nonces guardados - iniciando nuevo join");
+        DEBUG_PRINTLN("No hay nonces guardados - iniciando nuevo join");
     }
 
     // Si llegamos aquí, necesitamos hacer un nuevo join
     state = RADIOLIB_ERR_NETWORK_NOT_JOINED;
     while (state != RADIOLIB_LORAWAN_NEW_SESSION) {
-        Serial.println("Iniciando join a la red LoRaWAN");
+        DEBUG_PRINTLN("Iniciando join a la red LoRaWAN");
         state = node.activateOTAA();
 
         // Guardar nonces en flash si el join fue exitoso
         if (state == RADIOLIB_LORAWAN_NEW_SESSION) {
-            Serial.println("Join exitoso - Guardando nonces en flash");
+            DEBUG_PRINTLN("Join exitoso - Guardando nonces en flash");
             uint8_t buffer[RADIOLIB_LORAWAN_NONCES_BUF_SIZE];
             uint8_t *persist = node.getBufferNonces();
             memcpy(buffer, persist, RADIOLIB_LORAWAN_NONCES_BUF_SIZE);
@@ -97,7 +98,7 @@ int16_t LoRaManager::lwActivate(LoRaWANNode& node) {
             node.setDatarate(3);
             
             // Intentar obtener DeviceTime
-            Serial.println("Solicitando DeviceTime...");
+            DEBUG_PRINTLN("Solicitando DeviceTime...");
             bool macCommandSuccess = node.sendMacCommandReq(RADIOLIB_LORAWAN_MAC_DEVICE_TIME);
             if (macCommandSuccess) {
                 // Enviar mensaje vacío para recibir el DeviceTime
@@ -112,17 +113,17 @@ int16_t LoRaManager::lwActivate(LoRaWANNode& node) {
                     uint8_t fraction;
                     int16_t dtState = node.getMacDeviceTimeAns(&unixEpoch, &fraction, true);
                     if (dtState == RADIOLIB_ERR_NONE) {
-                        Serial.printf("DeviceTime recibido: epoch = %lu s, fraction = %u\n", unixEpoch, fraction);
+                        DEBUG_PRINTF("DeviceTime recibido: epoch = %lu s, fraction = %u\n", unixEpoch, fraction);
                         rtcManager.setTimeFromServer(unixEpoch, fraction);
                     } else {
-                        Serial.printf("Error al obtener DeviceTime: %d\n", dtState);
+                        DEBUG_PRINTF("Error al obtener DeviceTime: %d\n", dtState);
                         // Continuar aunque falle el DeviceTime
                     }
                 } else {
-                    Serial.printf("Error al recibir respuesta: %d\n", rxState);
+                    DEBUG_PRINTF("Error al recibir respuesta: %d\n", rxState);
                 }
             } else {
-                Serial.println("Error al solicitar DeviceTime: comando no pudo ser encolado");
+                DEBUG_PRINTLN("Error al solicitar DeviceTime: comando no pudo ser encolado");
             }
             
             // Retornar éxito incluso si falla el DeviceTime
@@ -130,7 +131,7 @@ int16_t LoRaManager::lwActivate(LoRaWANNode& node) {
             store.end();
             return RADIOLIB_LORAWAN_NEW_SESSION;
         } else {
-            Serial.printf("Join falló: %d\n", state);
+            DEBUG_PRINTF("Join falló: %d\n", state);
             bootCountSinceUnsuccessfulJoin++;
             store.end();
             // Aquí no llamamos a goToDeepSleep() directamente, sino que dejamos que el llamador maneje el fallo
@@ -154,24 +155,21 @@ void LoRaManager::sendFragmentedPayload(const std::vector<SensorReading>& readin
     
     while (sensorIndex < readings.size()) {
         // Crear un nuevo payload con cabecera
-        StaticJsonDocument<512> payload;
+        StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> payload;
         payload["st"] = stationId;
         payload["d"] = deviceId;
-        payload["vt"] = roundValue(SensorManager::readBatteryVoltageADC(), 6);
+        payload["vt"] = SensorManager::readBatteryVoltageADC();
         payload["ts"] = rtcManager.getEpochTime();
         JsonArray sensorArray = payload.createNestedArray("s");
         
         String fragmentStr;
         // Agregar lecturas de sensores mientras no se exceda el tamaño máximo del payload
         while (sensorIndex < readings.size()) {
-            // Limitar la precisión a 6 decimales
-            double valorRedondeado = roundValue(readings[sensorIndex].value, 6);
-            
             // Agregar la lectura al arreglo del payload
             JsonObject sensorObj = sensorArray.createNestedObject();
             sensorObj["id"] = readings[sensorIndex].sensorId;
             sensorObj["t"] = readings[sensorIndex].type;
-            sensorObj["v"] = valorRedondeado;
+            sensorObj["v"] = readings[sensorIndex].value;
             
             // Serializar para verificar el tamaño
             fragmentStr = "";
@@ -189,14 +187,14 @@ void LoRaManager::sendFragmentedPayload(const std::vector<SensorReading>& readin
         // Volver a serializar el payload final para este fragmento
         fragmentStr = "";
         serializeJson(payload, fragmentStr);
-        Serial.printf("Enviando fragmento %d con tamaño %d bytes\n", fragmentNumber, fragmentStr.length());
-        Serial.println(fragmentStr);
+        DEBUG_PRINTF("Enviando fragmento %d con tamaño %d bytes\n", fragmentNumber, fragmentStr.length());
+        DEBUG_PRINTLN(fragmentStr);
         
         int16_t state = node.sendReceive((uint8_t*)fragmentStr.c_str(), fragmentStr.length(), 1, true);
         if (state == RADIOLIB_ERR_NONE) {
-            Serial.printf("Fragmento %d enviado correctamente\n", fragmentNumber);
+            DEBUG_PRINTF("Fragmento %d enviado correctamente\n", fragmentNumber);
         } else {
-            Serial.printf("Error enviando fragmento %d: %d\n", fragmentNumber, state);
+            DEBUG_PRINTF("Error enviando fragmento %d: %d\n", fragmentNumber, state);
         }
         
         fragmentNumber++;
