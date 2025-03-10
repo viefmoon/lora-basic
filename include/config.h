@@ -107,11 +107,11 @@ const double conversionFactor = (R1 + R2) / R1;
 #define POWER_STABILIZE_DELAY   20
 
 // Configuración default sensores
+// Se ELIMINAN las líneas con S30_T y S30_H, sustituyéndolas por una sola entrada SHT30
 #define DEFAULT_SENSOR_CONFIGS { \
     {"R", "RTD1", RTD, 0, "", true}, \
     {"D", "DS1", DS18B20, 0, "", true}, \
-    {"D", "S30_T", S30_T, 0, "", true}, \
-    {"D", "S30_H", S30_H, 0, "", true} \
+    {"I2C", "SHT30", SHT30, 0, "", true} \
 }
 
 #endif
@@ -203,9 +203,9 @@ const double conversionFactor = (R1 + R2) / R1;
 #define KEY_LORAWAN_SESSION     "lorawan_session"
 
 // Tamaños de documentos JSON - Centralizados
-#define JSON_DOC_SIZE_SMALL   300   // Para configuraciones simples
-#define JSON_DOC_SIZE_MEDIUM  1024  // Para la mayoría de configuraciones
-#define JSON_DOC_SIZE_LARGE   2048  // Para arrays grandes de sensores o configuraciones complejas
+#define JSON_DOC_SIZE_SMALL   300
+#define JSON_DOC_SIZE_MEDIUM  1024
+#define JSON_DOC_SIZE_LARGE   2048
 
 // Batería
 #define BATTERY_ADC_CHANNEL     1
@@ -307,6 +307,7 @@ const double conversionFactor = (R1 + R2) / R1;
 #define KEY_PH_CT              "ph_ct"
 
 // Configuración sensores
+// Se quitan las dos líneas de S30_T y S30_H y se agrega una para SHT30
 #define DEFAULT_SENSOR_CONFIGS { \
     {"0", "NTC1",  N100K,  0, "", true}, \
     {"1", "NTC2",  N100K,  1, "", true}, \
@@ -317,8 +318,7 @@ const double conversionFactor = (R1 + R2) / R1;
     {"7", "PH1",   PH,     7, "", true}, \
     {"R", "RTD1",  RTD,    0, "", true}, \
     {"D", "DS1",   DS18B20,0, "", true}, \
-    {"D", "S30_T", S30_T,  0, "", true}, \
-    {"D", "S30_H", S30_H,  0, "", true} \
+    {"I2C", "SHT30", SHT30, 0, "", true} \
 }
 
 #endif
@@ -377,7 +377,7 @@ const double conversionFactor = (R1 + R2) / R1;
 
 // LoRa Region y SubBand
 #define LORA_REGION         US915
-#define LORA_SUBBAND        2       // For US915, use 2; for other regions, use 0
+#define LORA_SUBBAND        2
 
 #define BLE_SERVICE_UUID             "180A"
 #define BLE_CHAR_SYSTEM_UUID         "2A37"
@@ -414,22 +414,22 @@ const double conversionFactor = (R1 + R2) / R1;
 #define KEY_LORA_APP_KEY                 "appKey"
 #define KEY_LORAWAN_SESSION              "lorawan_session"
 
-// Tamaños de documentos JSON - Centralizados
-#define JSON_DOC_SIZE_SMALL   300   // Para configuraciones simples
-#define JSON_DOC_SIZE_MEDIUM  1024  // Para la mayoría de configuraciones
-#define JSON_DOC_SIZE_LARGE   2048  // Para arrays grandes de sensores o configuraciones complejas
+// Tamaños JSON
+#define JSON_DOC_SIZE_SMALL   300
+#define JSON_DOC_SIZE_MEDIUM  1024
+#define JSON_DOC_SIZE_LARGE   2048
 
 // Power management
 #define POWER_3V3_PIN           P00
 #define POWER_12V_PIN           P01
 #define POWER_STABILIZE_DELAY   20
 
-// Configuración sensores
+// Configuración default sensores
+// Se eliminan S30_T y S30_H, se agrega SHT30 unificado
 #define DEFAULT_SENSOR_CONFIGS { \
     {"R", "RTD1", RTD, 0, "", true}, \
     {"D", "DS1", DS18B20, 0, "", true}, \
-    {"D", "S30_T", S30_T, 0, "", true}, \
-    {"D", "S30_H", S30_H, 0, "", true} \
+    {"I2C", "SHT30", SHT30, 0, "", true} \
 }
 
 #endif
