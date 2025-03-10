@@ -337,19 +337,31 @@ void PCA9555::sleep() {
 
 #ifdef DEVICE_TYPE_MODBUS
     // Configuración para dispositivo MODBUS
-    // Para los pines que sean INPUT, ponemos su bit correspondiente en 1 dentro de tempConfig
-    tempConfig |= (1 << 2);   // pin 2 => INPUT
-    tempConfig |= (1 << 4);   // pin 4 => INPUT
-    tempConfig |= (1 << 5);   // pin 5 => INPUT
-    tempConfig |= (1 << 6);   // pin 6 => INPUT
+    //Power manager commentados para que esten como output bajo
+    //tempConfig |= (1 << 0);  // pin 1 => INPUT
+    //tempOutput |= (1 << 1);  // pin 1 => INPUT
+
+    //unused pins
+    tempConfig |= (1 << 2);  // pin 11 => INPUT
+    tempConfig |= (1 << 3);  // pin 12 => INPUT //cs de pt100, gasta menos con estado input flotante
+    tempConfig |= (1 << 4);  // pin 12 => INPUT
+    tempConfig |= (1 << 5);  // pin 13 => INPUT
+    tempConfig |= (1 << 6);  // pin 14 => INPUT
     tempConfig |= (1 << 11);  // pin 11 => INPUT
     tempConfig |= (1 << 12);  // pin 12 => INPUT
     tempConfig |= (1 << 13);  // pin 13 => INPUT
     tempConfig |= (1 << 14);  // pin 14 => INPUT
     tempConfig |= (1 << 15);  // pin 15 => INPUT
-    
-    // Para los pines que son OUTPUT y queramos poner en HIGH
-    tempOutput |= (1 << 3);   // pin 3 => HIGH //ss de pt100
+
+    //Actuadores se quedan en output bajo
+    tempConfig |= (1 << 7);  // pin 15 => INPUT
+    tempConfig |= (1 << 8);  // pin 15 => INPUT
+
+    // //Leds comentados para que sean output bajo
+    // tempConfig |= (1 << 9);  // pin 15 => INPUT
+    // tempConfig |= (1 << 10);  // pin 15 => INPUT
+    tempOutput |= (0 << 9);  // pin 9 => LOW //ss de pt100
+    tempOutput |= (0 << 10);  // pin 10 => LOW //ss de pt100
 #endif
 
 #ifdef DEVICE_TYPE_ANALOGIC
