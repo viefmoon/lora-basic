@@ -36,13 +36,14 @@ extern SensirionI2cSht3x sht30Sensor;
 class SensorManager {
   public:
     /**
-     * @brief Inicializa los pines de SPI y los periféricos asociados a sensores (ADC, RTD, etc.).
-     *        Debe llamarse durante o después de la inicialización del PCA9555.
+     * @brief Inicializa pines de SPI, periféricos (ADC, RTD, etc.), OneWire, etc.
      */
     static void beginSensors();
 
     /**
-     * @brief Devuelve la lectura de un sensor según su configuración.
+     * @brief Devuelve la lectura (o lecturas) de un sensor según su configuración.
+     *        - Si el sensor es de tipo "normal" (ej. RTD, DS18B20, etc.), retornará un valor simple en `value`.
+     *        - Si el sensor maneja subvalores (ej. SHT30 con T y H), estos se almacenarán en `reading.subValues`.
      */
     static SensorReading getSensorReading(const SensorConfig& cfg);
 
@@ -53,25 +54,27 @@ class SensorManager {
     static float readBatteryVoltageADC();
 
   private:
-    // Métodos de lectura para cada sensor
+    // Métodos de lectura internos
     static float readRtdSensor();
 #if defined(DEVICE_TYPE_BASIC) || defined(DEVICE_TYPE_ANALOGIC)
     static float readDallasSensor();
 #endif
-    static float readSht30Temperature();
-    static float readSht30Humidity();
+    // Lectura unificada de SHT30
+    static void readSht30(float& outTemp, float& outHum);
 
-    // Método interno para determinar el valor de un sensor
-    static float readSensorValue(const SensorConfig &cfg);
+    /**
+     * @brief Redondea un valor flotante a un máximo de 3 decimales.
+     */
+    static float roundTo3Decimals(float value);
 
     static void initializeSPISSPins();
 
     /**
-     * @brief Redondea un valor flotante a un máximo de 3 decimales.
-     *        Si el valor tiene menos de 3 decimales, se conserva.
-     *        Si tiene más, se redondea a 3.
+     * @brief Determina el valor (o valores) del sensor según su tipo. 
+     *        Para la mayoría, se retorna un solo valor float; 
+     *        para SHT30, se llenan `subValues` de la estructura.
      */
-    static float roundTo3Decimals(float value);
+    static float readSensorValue(const SensorConfig &cfg, SensorReading &reading);
 };
 
 #endif // SENSOR_MANAGER_H

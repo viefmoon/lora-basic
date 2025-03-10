@@ -1,9 +1,3 @@
-/*******************************************************************************************
- * Archivo: src/main.cpp
- * Descripción: Código principal para el ESP32 que configura los sensores, radio LoRa, BLE y
- * entra en modo Deep Sleep. Se incluye inicialización de hardware y manejo de configuraciones.
- *******************************************************************************************/
-
 #include <Arduino.h>
 #include <Wire.h>
 #include <SPI.h>
@@ -16,7 +10,6 @@
 #include <ArduinoJson.h>
 #include <cmath>
 
-// Bibliotecas específicas del proyecto
 #include "config.h"
 #include "debug.h"
 #include "PowerManager.h"
@@ -24,7 +17,6 @@
 #include <RadioLib.h>
 #include "RTCManager.h"
 #include "sensor_types.h"
-
 #include "SensorManager.h"
 #include "nvs_flash.h"
 #include "esp_sleep.h"
@@ -32,52 +24,25 @@
 #include <BLEServer.h>
 #include <BLEAdvertising.h>
 #include "config_manager.h"
-#include "ble_config_callbacks.h"
 #include "utilities.h"
-#include "ble_service.h"  
-#include "deep_sleep_config.h"
 #include <SensirionI2cSht3x.h>
 #include "LoRaManager.h"
+#include "BLE.h"
 
-/*-------------------------------------------------------------------------------------------------
-   Declaración de funciones
--------------------------------------------------------------------------------------------------*/
-/**
- * @brief Configura el servicio BLE y sus características.
- * @param pServer Puntero al servidor BLE.
- * @return Puntero al servicio BLE creado.
- */
-BLEService* setupBLEService(BLEServer* pServer);
+#include "HardwareManager.h"
+#include "SleepManager.h"
 
-/**
- * @brief Configura el ESP32 para entrar en deep sleep.
- */
-void goToDeepSleep();
-
-/**
- * @brief Verifica si se mantuvo presionado el botón de configuración y activa el modo BLE.
- */
-void checkConfigMode();
-
-/**
- * @brief Inicializa el bus I2C, la expansión de I/O y el PowerManager.
- */
-void initHardware();
-
-/*-------------------------------------------------------------------------------------------------
-   Objetos Globales y Variables
--------------------------------------------------------------------------------------------------*/
-
-
+//--------------------------------------------------------------------------------------------
+// Variables globales
+//--------------------------------------------------------------------------------------------
 const LoRaWANBand_t Region = LORA_REGION;
 const uint8_t subBand = LORA_SUBBAND;
 
-Preferences preferences;       // Almacenamiento de preferencias en NVS
-
-uint32_t timeToSleep;          // Tiempo en segundos para deep sleep
+Preferences preferences;
+uint32_t timeToSleep;
 String deviceId;
 String stationId;
-bool systemInitialized;        // Variable global para la inicialización del sistema
+bool systemInitialized;
 
 RTCManager rtcManager;
 PCA9555 ioExpander(I2C_ADDRESS_PCA9555, I2C_SDA_PIN, I2C_SCL_PIN);
@@ -91,7 +56,7 @@ SPISettings spiRtdSettings(SPI_RTD_CLOCK, MSBFIRST, SPI_MODE1);
 SPISettings spiRadioSettings(SPI_RADIO_CLOCK, MSBFIRST, SPI_MODE0);
 
 MAX31865_RTD rtd(MAX31865_RTD::RTD_PT100, spi, spiRtdSettings, ioExpander, PT100_CS_PIN);
-SensirionI2cSht3x sht30Sensor; 
+SensirionI2cSht3x sht30Sensor;
 
 SX1262 radio = new Module(LORA_NSS_PIN, LORA_DIO1_PIN, LORA_RST_PIN, LORA_BUSY_PIN, spi, spiRadioSettings);
 LoRaWANNode node(&radio, &Region, subBand);
@@ -106,195 +71,84 @@ RTC_DATA_ATTR uint16_t bootCountSinceUnsuccessfulJoin = 0;
 RTC_DATA_ATTR uint8_t LWsession[RADIOLIB_LORAWAN_SESSION_BUF_SIZE];
 Preferences store;
 
-/*-------------------------------------------------------------------------------------------------
-   Implementación de Funciones
--------------------------------------------------------------------------------------------------*/
-
-/**
- * @brief Entra en modo deep sleep después de apagar periféricos y poner en reposo el módulo LoRa.
- */
-void goToDeepSleep() {
-    
-    // Guardar sesión en RTC y otras rutinas de apagado
-    uint8_t *persist = node.getBufferSession();
-    memcpy(LWsession, persist, RADIOLIB_LORAWAN_SESSION_BUF_SIZE);
-    
-    // Poner el PCA9555 en modo sleep
-    ioExpander.sleep();
-    
-    // Apagar todos los reguladores
-    powerManager.allPowerOff();
-    
-    // Flush Serial antes de dormir
-    DEBUG_FLUSH();
-    DEBUG_END();
-    
-    // Apagar módulos
-    LoRaManager::prepareForSleep(&radio);
-    btStop();
-
-        // Deshabilitar I2C y SPI
-    Wire.end();
-    spi.end();
-    
-    // Configurar el temporizador y GPIO para despertar
-    esp_sleep_enable_timer_wakeup(timeToSleep * 1000000ULL);
-    gpio_wakeup_enable((gpio_num_t)CONFIG_PIN, GPIO_INTR_LOW_LEVEL);
-    esp_sleep_enable_gpio_wakeup();
-    esp_deep_sleep_enable_gpio_wakeup(BIT(CONFIG_PIN), ESP_GPIO_WAKEUP_GPIO_LOW);
-    configurePinsForDeepSleep();
-    
-    // Entrar en deep sleep
-    esp_deep_sleep_start();
-}
-
-/**
- * @brief Comprueba si se ha activado el modo configuración mediante un pin.
- *        Si se mantiene presionado el botón de configuración durante el tiempo definido, activa BLE.
- */
-void checkConfigMode() {
-    if (digitalRead(CONFIG_PIN) == LOW) {
-        DEBUG_PRINTLN("Modo configuración activado");
-        unsigned long startTime = millis();
-        while (digitalRead(CONFIG_PIN) == LOW) {
-            if (millis() - startTime >= CONFIG_TRIGGER_TIME) {
-
-                // Inicializar BLE y crear servicio de configuración usando la nueva función modularizada
-                LoRaConfig loraConfig = ConfigManager::getLoRaConfig();
-                String bleName = "SENSOR_DEV" + String(loraConfig.devEUI);
-                BLEDevice::init(bleName.c_str());
-
-                BLEServer* pServer = BLEDevice::createServer();
-                pServer->setCallbacks(new MyBLEServerCallbacks());  // Añadido el callback del servidor
-                BLEService* pService = setupBLEService(pServer);
-
-                // Configurar publicidad BLE
-                BLEAdvertising* pAdvertising = BLEDevice::getAdvertising();
-                pAdvertising->addServiceUUID(pService->getUUID());
-                pAdvertising->setScanResponse(true);
-                pAdvertising->setMinPreferred(0x06);
-                pAdvertising->setMinPreferred(0x12);
-                pAdvertising->start();
-
-                // Bucle de parpadeo del LED de configuración
-                while (true) {
-                    ioExpander.digitalWrite(CONFIG_LED_PIN, HIGH);
-                    delay(500);
-                    ioExpander.digitalWrite(CONFIG_LED_PIN, LOW);
-                    delay(500);
-                }
-            }
-        }
-    }
-}
-
-/**
- * @brief Inicializa configuraciones básicas de hardware:
- *        - Inicia el bus I2C.
- *        - Inicializa el expansor de I/O (PCA9555).
- *        - Configura el PowerManager.
- */
-void initHardware() {
-    // Inicializar I2C con pines definidos
-    Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN);
-
-    // Inicializar SHT30 para reset
-    sht30Sensor.begin(Wire, SHT30_I2C_ADDR_44);
-    sht30Sensor.stopMeasurement();
-    delay(1);
-    sht30Sensor.softReset();
-    delay(100);
-    
-    // Inicializar PCA9555 para expansión de I/O
-    if (!ioExpander.begin()) {
-        DEBUG_PRINTLN("Error al inicializar PCA9555");
-        return;
-    }
-    
-    // Inicializar PowerManager para control de energía
-    if (!powerManager.begin()) {
-        DEBUG_PRINTLN("Error al inicializar PowerManager");
-        return;
-    }
-}
-
-/*-------------------------------------------------------------------------------------------------
-   Función setup()
-   Inicializa la comunicación serial, hardware, configuración de sensores y radio,
-   y recupera configuraciones previas del sistema.
--------------------------------------------------------------------------------------------------*/
+//--------------------------------------------------------------------------------------------
+// setup()
+//--------------------------------------------------------------------------------------------
 void setup() {
     DEBUG_BEGIN(115200);
     
-    // Liberar el hold de los pines no excluidos si se está saliendo de deep sleep.
-    restoreUnusedPinsState();
-    
+    SleepManager::releaseHeldPins();
     pinMode(CONFIG_PIN, INPUT);
 
-    // // Inicialización del NVS y de hardware I2C/IO
-    // preferences.clear();
-    // nvs_flash_erase();
-    // nvs_flash_init();
-
+    // Inicialización de configuración
     if (!ConfigManager::checkInitialized()) {
         DEBUG_PRINTLN("Primera ejecución detectada. Inicializando configuración...");
         ConfigManager::initializeDefaultConfig();
     }
-    
     ConfigManager::getSystemConfig(systemInitialized, timeToSleep, deviceId, stationId);
-    initHardware();
 
-    checkConfigMode();
-
-    if (!rtcManager.begin()) {
-        DEBUG_PRINTLN("No se pudo encontrar el RTC");
+    // Inicialización de hardware
+    if (!HardwareManager::initHardware(ioExpander, powerManager, sht30Sensor)) {
+        DEBUG_PRINTLN("Error en la inicialización del hardware");
     }
 
+    // Modo configuración BLE
+    if (BLEHandler::checkConfigMode(ioExpander)) {
+        return;
+    }
+
+    // Inicializar RTC
+    if (!rtcManager.begin()) {
+        DEBUG_PRINTLN("No se pudo encontrar RTC");
+    }
+
+    // Encender 3.3V
     powerManager.power3V3On();
+
+    // Inicializar sensores
     SensorManager::beginSensors();
     
+    // Inicializar radio LoRa
     int16_t state = radio.begin();
     if (state != RADIOLIB_ERR_NONE) {
         DEBUG_PRINTF("Error iniciando radio: %d\n", state);
     }
 
-    // Activar el nodo usando la nueva función
+    // Activar LoRaWAN
     state = LoRaManager::lwActivate(node);
     if (state != RADIOLIB_LORAWAN_NEW_SESSION && state != RADIOLIB_LORAWAN_SESSION_RESTORED) {
-        DEBUG_PRINTF("Error en la activación LoRaWAN: %d\n", state);
-        goToDeepSleep();
+        DEBUG_PRINTF("Error activando LoRaWAN: %d\n", state);
+        SleepManager::goToDeepSleep(timeToSleep, powerManager, ioExpander, &radio, node, LWsession, spi);
         return;
     }
-    // Configurar datarate
+
+    // Ajustar datarate
     LoRaManager::setDatarate(node, 3);
 
-    // Configurar pin para LED
     ioExpander.pinMode(CONFIG_LED_PIN, OUTPUT);
 }
 
-/*-------------------------------------------------------------------------------------------------
-   Función loop()
-   Ejecuta el ciclo principal: comprobación del modo configuración, lecturas de sensores,
-   impresión de resultados de depuración y finalmente entra en deep sleep.
--------------------------------------------------------------------------------------------------*/
+//--------------------------------------------------------------------------------------------
+// loop()
+//--------------------------------------------------------------------------------------------
 void loop() {
-    // Comprobar constantemente si se solicita el modo configuración
-    checkConfigMode();
-    
-    // Obtener directamente los sensores habilitados usando la nueva función
+    // Verificar si se mantiene presionado para modo config
+    if (BLEHandler::checkConfigMode(ioExpander)) {
+        return;
+    }
+
+    // Obtener sensores habilitados y leerlos
     auto enabledSensors = ConfigManager::getEnabledSensorConfigs();
-    
-    // Array para almacenar las lecturas de sensores
     std::vector<SensorReading> readings;
-    
-    // Obtener lecturas de los sensores habilitados
-    for (const auto& sensor : enabledSensors) {
+    readings.reserve(enabledSensors.size());
+
+    for (const auto &sensor : enabledSensors) {
         readings.push_back(SensorManager::getSensorReading(sensor));
     }
-    
-    // Enviar el payload fragmentado
+
+    // Enviar por LoRa
     LoRaManager::sendFragmentedPayload(readings, node, deviceId, stationId, rtcManager);
-    
-    // Entrar en modo deep sleep tras finalizar las tareas del ciclo
-    goToDeepSleep();
+
+    // Dormir
+    SleepManager::goToDeepSleep(timeToSleep, powerManager, ioExpander, &radio, node, LWsession, spi);
 }

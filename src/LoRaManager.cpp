@@ -11,7 +11,7 @@
 LoRaWANNode* LoRaManager::node = nullptr;
 SX1262* LoRaManager::radioModule = nullptr;
 
-// Referencias a variables externas definidas en main.cpp
+// Referencias externas
 extern RTC_DATA_ATTR uint8_t LWsession[RADIOLIB_LORAWAN_SESSION_BUF_SIZE];
 extern RTC_DATA_ATTR uint16_t bootCountSinceUnsuccessfulJoin;
 extern RTCManager rtcManager;
@@ -117,7 +117,6 @@ int16_t LoRaManager::lwActivate(LoRaWANNode& node) {
                         rtcManager.setTimeFromServer(unixEpoch, fraction);
                     } else {
                         DEBUG_PRINTF("Error al obtener DeviceTime: %d\n", dtState);
-                        // Continuar aunque falle el DeviceTime
                     }
                 } else {
                     DEBUG_PRINTF("Error al recibir respuesta: %d\n", rxState);
@@ -126,7 +125,6 @@ int16_t LoRaManager::lwActivate(LoRaWANNode& node) {
                 DEBUG_PRINTLN("Error al solicitar DeviceTime: comando no pudo ser encolado");
             }
             
-            // Retornar éxito incluso si falla el DeviceTime
             bootCountSinceUnsuccessfulJoin = 0;
             store.end();
             return RADIOLIB_LORAWAN_NEW_SESSION;
@@ -134,7 +132,6 @@ int16_t LoRaManager::lwActivate(LoRaWANNode& node) {
             DEBUG_PRINTF("Join falló: %d\n", state);
             bootCountSinceUnsuccessfulJoin++;
             store.end();
-            // Aquí no llamamos a goToDeepSleep() directamente, sino que dejamos que el llamador maneje el fallo
             return state;
         }
     }
@@ -143,13 +140,16 @@ int16_t LoRaManager::lwActivate(LoRaWANNode& node) {
     return state;
 }
 
+/**
+ * @brief Envía el payload de sensores fragmentado. 
+ *        Se agregó soporte para subvalores en un solo sensor (por ej. SHT30 con T, H).
+ */
 void LoRaManager::sendFragmentedPayload(const std::vector<SensorReading>& readings, 
-                                       LoRaWANNode& node,
-                                       const String& deviceId, 
-                                       const String& stationId, 
-                                       RTCManager& rtcManager) {
-    // Obtener el tamaño máximo del payload permitido por la configuración LoRaWAN.
-    const int MAX_PAYLOAD = 200; // DR4 max payload is 250 bytes
+                                        LoRaWANNode& node,
+                                        const String& deviceId, 
+                                        const String& stationId, 
+                                        RTCManager& rtcManager) {
+    const int MAX_PAYLOAD = 200; // Control de tamaño
     size_t sensorIndex = 0;
     int fragmentNumber = 0;
     
@@ -163,29 +163,38 @@ void LoRaManager::sendFragmentedPayload(const std::vector<SensorReading>& readin
         JsonArray sensorArray = payload.createNestedArray("s");
         
         String fragmentStr;
-        // Agregar lecturas de sensores mientras no se exceda el tamaño máximo del payload
+
+        // Agregar lecturas de sensores mientras no se exceda el tamaño
         while (sensorIndex < readings.size()) {
-            // Agregar la lectura al arreglo del payload
             JsonObject sensorObj = sensorArray.createNestedObject();
             sensorObj["id"] = readings[sensorIndex].sensorId;
-            sensorObj["t"] = readings[sensorIndex].type;
-            sensorObj["v"] = readings[sensorIndex].value;
-            
-            // Serializar para verificar el tamaño
-            fragmentStr = "";
+            sensorObj["t"]  = readings[sensorIndex].type;
+
+            // --- Soporte para subvalores:
+            if (!readings[sensorIndex].subValues.empty()) {
+                // Si hay subvalores (ej. SHT30 -> T, H)
+                JsonObject multiVals = sensorObj.createNestedObject("v");
+                for (auto &sv : readings[sensorIndex].subValues) {
+                    multiVals[sv.key] = sv.value;
+                }
+            } else {
+                // Sensor con un solo valor
+                sensorObj["v"] = readings[sensorIndex].value;
+            }
+
+            // Serializar para verificar si excede
+            fragmentStr.clear();
             serializeJson(payload, fragmentStr);
-            
-            // Si se excede el límite, eliminar la última lectura y salir del ciclo
             if (fragmentStr.length() > MAX_PAYLOAD) {
+                // Retirar la última lectura si excede
                 sensorArray.remove(sensorArray.size() - 1);
                 break;
             }
-            
             sensorIndex++;
         }
         
-        // Volver a serializar el payload final para este fragmento
-        fragmentStr = "";
+        // Serializar el payload final para este fragmento
+        fragmentStr.clear();
         serializeJson(payload, fragmentStr);
         DEBUG_PRINTF("Enviando fragmento %d con tamaño %d bytes\n", fragmentNumber, fragmentStr.length());
         DEBUG_PRINTLN(fragmentStr);
