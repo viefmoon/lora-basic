@@ -11,15 +11,12 @@
 #include <Preferences.h>
 #include "config_manager.h"
 
-/*-------------------------------------------------------------------------------------------
-   Inicialización de los sensores
--------------------------------------------------------------------------------------------*/
 void SensorManager::beginSensors() {
     // Inicializar pines de SPI (SS) y luego SPI
     initializeSPISSPins();
     spi.begin(SPI_SCK_PIN, SPI_MISO_PIN, SPI_MOSI_PIN);
 
-    // Encender alimentación 3.3V (depende del dispositivo)
+    // Encender alimentación 3.3V
     powerManager.power3V3On();
 
     // Inicializar RTD y configurarlo
@@ -41,7 +38,7 @@ void SensorManager::beginSensors() {
     // Inicializar DS18B20
     dallasTemp.begin();
     dallasTemp.setResolution(12);
-    // Lectura inicial (descartable)
+    // Lectura inicial
     dallasTemp.requestTemperatures();
     delay(750);
     dallasTemp.getTempCByIndex(0);
@@ -53,63 +50,61 @@ void SensorManager::beginSensors() {
     delay(1);
     sht30Sensor.softReset();
     delay(100);
-
-    // Lectura inicial descartable para estabilizar
+    
     float dummyTemp = 0.0f, dummyHum = 0.0f;
     sht30Sensor.measureSingleShot(REPEATABILITY_HIGH, false, dummyTemp, dummyHum);
     delay(20);
 }
 
-/*-------------------------------------------------------------------------------------------
-   Helpers
--------------------------------------------------------------------------------------------*/
 void SensorManager::initializeSPISSPins() {
-    // Inicializar SS del LORA que está conectado directamente al ESP32
+    // Inicializar SS del LORA conectado directamente
     pinMode(LORA_NSS_PIN, OUTPUT);
     digitalWrite(LORA_NSS_PIN, HIGH);
 
-    // Inicializar SS conectados al expansor I2C
+    // Inicializar SS conectados al expansor
     ioExpander.pinMode(PT100_CS_PIN, OUTPUT);
     ioExpander.digitalWrite(PT100_CS_PIN, HIGH);
-
-    // Otros SS se configuran si fueran necesarios (ADC, etc.)
 }
 
-float SensorManager::roundTo3Decimals(float value) {
-    return roundf(value * 1000.0f) / 1000.0f;
+SensorReading SensorManager::getSensorReading(const SensorConfig &cfg) {
+    SensorReading reading;
+    strncpy(reading.sensorId, cfg.sensorId, sizeof(reading.sensorId) - 1);
+    reading.sensorId[sizeof(reading.sensorId) - 1] = '\0';
+    reading.type = cfg.type;
+    reading.value = NAN;
+
+    readSensorValue(cfg, reading);
+
+    if (!isnan(reading.value)) {
+        reading.value = roundTo3Decimals(reading.value);
+    }
+    for (auto &sv : reading.subValues) {
+        sv.value = roundTo3Decimals(sv.value);
+    }
+
+    return reading;
 }
 
-/*-------------------------------------------------------------------------------------------
-   Lectura de Batería
--------------------------------------------------------------------------------------------*/
-#if defined(DEVICE_TYPE_ANALOGIC)
 float SensorManager::readBatteryVoltageADC() {
-    // Configurar la resolución del ADC (0-4095 para 12 bits)
+#if defined(DEVICE_TYPE_ANALOGIC)
     analogReadResolution(12);
-    
     int reading = analogRead(BATTERY_ADC_PIN);
     float voltage = (reading / 4095.0f) * 3.3f;
     float batteryVoltage = voltage * conversionFactor;
     return roundTo3Decimals(batteryVoltage);
-}
 #elif defined(DEVICE_TYPE_BASIC) || defined(DEVICE_TYPE_MODBUS)
-float SensorManager::readBatteryVoltageADC() {
     analogReadResolution(12);
-    
     int reading = analogRead(BATTERY_PIN);
     float voltage = (reading / 4095.0f) * 3.3f;
     float batteryVoltage = voltage * conversionFactor;
     return roundTo3Decimals(batteryVoltage);
-}
 #endif
+}
 
-/*-------------------------------------------------------------------------------------------
-   Lecturas de sensores internos
--------------------------------------------------------------------------------------------*/
 float SensorManager::readRtdSensor() {
     uint8_t status = rtd.read_all();
     if (status == 0) {
-        return rtd.temperature(); // °C
+        return rtd.temperature();
     } else {
         return NAN;
     }
@@ -126,11 +121,6 @@ float SensorManager::readDallasSensor() {
 }
 #endif
 
-/**
- * @brief Lectura interna unificada de SHT30.
- * @param outTemp temperatura medida.
- * @param outHum  humedad medida.
- */
 void SensorManager::readSht30(float &outTemp, float &outHum) {
     float temperature = 0.0f;
     float humidity = 0.0f;
@@ -138,7 +128,6 @@ void SensorManager::readSht30(float &outTemp, float &outHum) {
     int16_t error = sht30Sensor.measureSingleShot(REPEATABILITY_HIGH, false, temperature, humidity);
     delay(20);
     if (error != NO_ERROR) {
-        // Si falla la lectura, devolvemos NAN
         outTemp = NAN;
         outHum = NAN;
         return;
@@ -147,35 +136,10 @@ void SensorManager::readSht30(float &outTemp, float &outHum) {
     outHum = humidity;
 }
 
-/*-------------------------------------------------------------------------------------------
-   Método principal para obtener la lectura de un sensor, con subvalores si aplica.
--------------------------------------------------------------------------------------------*/
-SensorReading SensorManager::getSensorReading(const SensorConfig &cfg) {
-    SensorReading reading;
-    strncpy(reading.sensorId, cfg.sensorId, sizeof(reading.sensorId) - 1);
-    reading.sensorId[sizeof(reading.sensorId) - 1] = '\0';
-    reading.type = cfg.type;
-    reading.value = NAN;  // Por defecto NAN, a veces se usará subValues en su lugar
-
-    // Llamamos a la lectura real. Este método se encargará de asignar reading.value o reading.subValues
-    readSensorValue(cfg, reading);
-
-    // Redondear si es un valor único
-    if (!isnan(reading.value)) {
-        reading.value = roundTo3Decimals(reading.value);
-    }
-
-    // Si hay subvalores, también se redondean:
-    for (auto &sv : reading.subValues) {
-        sv.value = roundTo3Decimals(sv.value);
-    }
-
-    return reading;
+float SensorManager::roundTo3Decimals(float value) {
+    return roundf(value * 1000.0f) / 1000.0f;
 }
 
-/*-------------------------------------------------------------------------------------------
-   Determina el valor o valores de un sensor según su tipo
--------------------------------------------------------------------------------------------*/
 float SensorManager::readSensorValue(const SensorConfig &cfg, SensorReading &reading) {
     switch (cfg.type) {
         case N100K:
@@ -185,7 +149,7 @@ float SensorManager::readSensorValue(const SensorConfig &cfg, SensorReading &rea
         case COND:
         case SOILH:
         case CONDH:
-            // Aquí se podría implementar la lectura real de estos sensores
+            // No implementado en este ejemplo
             reading.value = 0.0f; 
             break;
 
@@ -199,26 +163,18 @@ float SensorManager::readSensorValue(const SensorConfig &cfg, SensorReading &rea
             break;
 #endif
 
-        // Se unifican T y H en un solo tipo SHT30
         case SHT30: {
             float tmp = 0.0f, hum = 0.0f;
             readSht30(tmp, hum);
-
-            // En vez de usar reading.value, guardamos 2 subvalores
             reading.subValues.clear();
             {
-                SubValue sT;
-                strncpy(sT.key, "T", sizeof(sT.key));
-                sT.value = tmp;
+                SubValue sT; strncpy(sT.key, "T", sizeof(sT.key)); sT.value = tmp;
                 reading.subValues.push_back(sT);
             }
             {
-                SubValue sH;
-                strncpy(sH.key, "H", sizeof(sH.key));
-                sH.value = hum;
+                SubValue sH; strncpy(sH.key, "H", sizeof(sH.key)); sH.value = hum;
                 reading.subValues.push_back(sH);
             }
-
             break;
         }
 
@@ -227,4 +183,71 @@ float SensorManager::readSensorValue(const SensorConfig &cfg, SensorReading &rea
             break;
     }
     return reading.value;
+}
+
+ModbusSensorReading SensorManager::getModbusSensorReading(const ModbusSensorConfig& cfg) {
+    ModbusSensorReading reading;
+    
+    // Copiar el ID del sensor
+    strlcpy(reading.sensorId, cfg.sensorId, sizeof(reading.sensorId));
+    reading.type = cfg.type;
+    #if defined(DEVICE_TYPE_MODBUS) || defined(DEVICE_TYPE_ANALOGIC)
+        powerManager.power12VOn();
+        delay(5000);
+    #endif
+    
+    // Inicializar ModBus para la comunicación
+    //ModbusSensorManager::beginModbus();
+    
+    // Leer sensor según su tipo
+    switch (cfg.type) {
+        case ENV_SENSOR:
+            reading = ModbusSensorManager::readEnvSensor(cfg);
+            break;
+        // Añadir casos para otros tipos de sensores Modbus
+        default:
+            Serial.println("Tipo de sensor Modbus no soportado");
+            break;
+    }
+    
+    // Apagar alimentación 12V después de la lectura
+#if defined(DEVICE_TYPE_MODBUS) || defined(DEVICE_TYPE_ANALOGIC)
+    powerManager.power12VOff();
+#endif
+    
+    // // Imprimir resultados
+    // Serial.println("Resultados de la lectura:");
+    // for (const auto& sv : reading.subValues) {
+    //     if (isnan(sv.value)) {
+    //         Serial.printf("  %s: NAN (sin lectura)\n", sv.key);
+    //     } else {
+    //         Serial.printf("  %s: %.2f\n", sv.key, sv.value);
+    //     }
+    // }
+    // Serial.println("=== Fin de lectura de sensor Modbus ===");
+    
+    return reading;
+}
+
+void SensorManager::getAllSensorReadings(std::vector<SensorReading>& normalReadings, 
+                                        std::vector<ModbusSensorReading>& modbusReadings) {
+    // Obtener configuraciones de sensores habilitados
+    auto enabledNormalSensors = ConfigManager::getEnabledSensorConfigs();
+    auto enabledModbusSensors = ConfigManager::getEnabledModbusSensorConfigs();
+    
+    // Reservar espacio para los vectores
+    normalReadings.reserve(enabledNormalSensors.size());
+    modbusReadings.reserve(enabledModbusSensors.size());
+    
+    // Leer sensores normales
+    for (const auto &sensor : enabledNormalSensors) {
+        normalReadings.push_back(getSensorReading(sensor));
+    }
+    
+    // Si hay sensores Modbus, leerlos
+    if (!enabledModbusSensors.empty()) {
+        for (const auto &sensor : enabledModbusSensors) {
+            modbusReadings.push_back(getModbusSensorReading(sensor));
+        }
+    }
 }

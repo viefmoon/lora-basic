@@ -75,10 +75,16 @@ Preferences store;
 // setup()
 //--------------------------------------------------------------------------------------------
 void setup() {
-    DEBUG_BEGIN(115200);
+    DEBUG_BEGIN(SERIAL_BAUD_RATE);
+
     
     SleepManager::releaseHeldPins();
     pinMode(CONFIG_PIN, INPUT);
+
+    // Inicialización del NVS y de hardware I2C/IO
+    // preferences.clear();
+    // nvs_flash_erase();
+    // nvs_flash_init();
 
     // Inicialización de configuración
     if (!ConfigManager::checkInitialized()) {
@@ -137,17 +143,13 @@ void loop() {
         return;
     }
 
-    // Obtener sensores habilitados y leerlos
-    auto enabledSensors = ConfigManager::getEnabledSensorConfigs();
-    std::vector<SensorReading> readings;
-    readings.reserve(enabledSensors.size());
+    // Obtener todas las lecturas de sensores (normales y Modbus)
+    std::vector<SensorReading> normalReadings;
+    std::vector<ModbusSensorReading> modbusReadings;
 
-    for (const auto &sensor : enabledSensors) {
-        readings.push_back(SensorManager::getSensorReading(sensor));
-    }
+    SensorManager::getAllSensorReadings(normalReadings, modbusReadings);
 
-    // Enviar por LoRa
-    LoRaManager::sendFragmentedPayload(readings, node, deviceId, stationId, rtcManager);
+    LoRaManager::sendFragmentedPayload(normalReadings, modbusReadings, node, deviceId, stationId, rtcManager);
 
     // Dormir
     SleepManager::goToDeepSleep(timeToSleep, powerManager, ioExpander, &radio, node, LWsession, spi);

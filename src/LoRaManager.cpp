@@ -199,14 +199,137 @@ void LoRaManager::sendFragmentedPayload(const std::vector<SensorReading>& readin
         DEBUG_PRINTF("Enviando fragmento %d con tamaño %d bytes\n", fragmentNumber, fragmentStr.length());
         DEBUG_PRINTLN(fragmentStr);
         
-        int16_t state = node.sendReceive((uint8_t*)fragmentStr.c_str(), fragmentStr.length(), 1, true);
+        uint8_t payloadBytes[MAX_PAYLOAD];
+        size_t payloadLength = fragmentStr.length();
+        memcpy(payloadBytes, fragmentStr.c_str(), payloadLength);
+        
+        // Enviar el fragmento
+        uint8_t fPort = 1;
+        int16_t state = node.sendReceive(payloadBytes, payloadLength, fPort);
         if (state == RADIOLIB_ERR_NONE) {
-            DEBUG_PRINTF("Fragmento %d enviado correctamente\n", fragmentNumber);
+            DEBUG_PRINTLN("Fragmento enviado correctamente");
         } else {
-            DEBUG_PRINTF("Error enviando fragmento %d: %d\n", fragmentNumber, state);
+            DEBUG_PRINTF("Error al enviar fragmento: %d\n", state);
         }
         
         fragmentNumber++;
+        // Dormir brevemente entre fragmentos
+        delay(500);
+    }
+}
+
+/**
+ * @brief Versión expandida de sendFragmentedPayload que soporta tanto sensores normales como Modbus.
+ *        Envía las lecturas en fragmentos, agregando primero las normales y luego las Modbus.
+ */
+void LoRaManager::sendFragmentedPayload(const std::vector<SensorReading>& normalReadings, 
+                                       const std::vector<ModbusSensorReading>& modbusReadings,
+                                       LoRaWANNode& node,
+                                       const String& deviceId, 
+                                       const String& stationId, 
+                                       RTCManager& rtcManager) {
+    const int MAX_PAYLOAD = 200; // Control de tamaño
+    size_t normalIndex = 0;
+    size_t modbusIndex = 0;
+    int fragmentNumber = 0;
+    bool processedAllNormal = false;
+    bool processedAllModbus = false;
+    
+    // Procesar mientras haya datos por enviar
+    while (!processedAllNormal || !processedAllModbus) {
+        // Crear un nuevo payload con cabecera
+        StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> payload;
+        payload["st"] = stationId;
+        payload["d"] = deviceId;
+        payload["vt"] = SensorManager::readBatteryVoltageADC();
+        payload["ts"] = rtcManager.getEpochTime();
+        JsonArray sensorArray = payload.createNestedArray("s");
+        
+        String fragmentStr;
+
+        // Primero agregamos lecturas de sensores normales
+        while (!processedAllNormal && normalIndex < normalReadings.size()) {
+            JsonObject sensorObj = sensorArray.createNestedObject();
+            sensorObj["id"] = normalReadings[normalIndex].sensorId;
+            sensorObj["t"]  = normalReadings[normalIndex].type;
+
+            // --- Soporte para subvalores:
+            if (!normalReadings[normalIndex].subValues.empty()) {
+                // Si hay subvalores (ej. SHT30 -> T, H)
+                JsonObject multiVals = sensorObj.createNestedObject("v");
+                for (auto &sv : normalReadings[normalIndex].subValues) {
+                    multiVals[sv.key] = sv.value;
+                }
+            } else {
+                // Sensor con un solo valor
+                sensorObj["v"] = normalReadings[normalIndex].value;
+            }
+
+            // Serializar para verificar si excede
+            fragmentStr.clear();
+            serializeJson(payload, fragmentStr);
+            if (fragmentStr.length() > MAX_PAYLOAD) {
+                // Retirar la última lectura si excede
+                sensorArray.remove(sensorArray.size() - 1);
+                break;
+            }
+            normalIndex++;
+            if (normalIndex >= normalReadings.size()) {
+                processedAllNormal = true;
+            }
+        }
+        
+        // Luego agregamos lecturas de sensores Modbus si hay espacio
+        if (!processedAllModbus && modbusIndex < modbusReadings.size()) {
+            while (modbusIndex < modbusReadings.size()) {
+                JsonObject sensorObj = sensorArray.createNestedObject();
+                sensorObj["id"] = modbusReadings[modbusIndex].sensorId;
+                sensorObj["t"]  = modbusReadings[modbusIndex].type + 100; // Offset para distinguir tipos Modbus
+                
+                // Los sensores Modbus siempre tienen subvalores
+                JsonObject multiVals = sensorObj.createNestedObject("v");
+                for (auto &sv : modbusReadings[modbusIndex].subValues) {
+                    multiVals[sv.key] = sv.value;
+                }
+
+                // Serializar para verificar si excede
+                fragmentStr.clear();
+                serializeJson(payload, fragmentStr);
+                if (fragmentStr.length() > MAX_PAYLOAD) {
+                    // Retirar la última lectura si excede
+                    sensorArray.remove(sensorArray.size() - 1);
+                    break;
+                }
+                modbusIndex++;
+                if (modbusIndex >= modbusReadings.size()) {
+                    processedAllModbus = true;
+                    break;
+                }
+            }
+        }
+        
+        // Serializar el payload final para este fragmento
+        fragmentStr.clear();
+        serializeJson(payload, fragmentStr);
+        DEBUG_PRINTF("Enviando fragmento %d con tamaño %d bytes\n", fragmentNumber, fragmentStr.length());
+        DEBUG_PRINTLN(fragmentStr);
+        
+        uint8_t payloadBytes[MAX_PAYLOAD];
+        size_t payloadLength = fragmentStr.length();
+        memcpy(payloadBytes, fragmentStr.c_str(), payloadLength);
+        
+        // Enviar el fragmento
+        uint8_t fPort = 1;
+        int16_t state = node.sendReceive(payloadBytes, payloadLength, fPort);
+        if (state == RADIOLIB_ERR_NONE) {
+            DEBUG_PRINTLN("Fragmento enviado correctamente");
+        } else {
+            DEBUG_PRINTF("Error al enviar fragmento: %d\n", state);
+        }
+        
+        fragmentNumber++;
+        // Dormir brevemente entre fragmentos
+        delay(500);
     }
 }
 

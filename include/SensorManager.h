@@ -13,6 +13,7 @@
 #include <DallasTemperature.h>
 #endif
 #include <SensirionI2cSht3x.h>
+#include "ModbusSensorManager.h"
 
 // Variables y objetos globales declarados en main.cpp
 extern RTCManager rtcManager;
@@ -31,26 +32,25 @@ extern DallasTemperature dallasTemp;
 extern SensirionI2cSht3x sht30Sensor;
 
 /**
- * @brief Clase que maneja la inicialización y lecturas de todos los sensores.
+ * @brief Clase que maneja la inicialización y lecturas de todos los sensores
+ *        incluyendo sensores normales y Modbus.
  */
 class SensorManager {
   public:
-    /**
-     * @brief Inicializa pines de SPI, periféricos (ADC, RTD, etc.), OneWire, etc.
-     */
+    // Inicializa pines, periféricos (ADC, RTD, etc.), OneWire, etc.
     static void beginSensors();
 
-    /**
-     * @brief Devuelve la lectura (o lecturas) de un sensor según su configuración.
-     *        - Si el sensor es de tipo "normal" (ej. RTD, DS18B20, etc.), retornará un valor simple en `value`.
-     *        - Si el sensor maneja subvalores (ej. SHT30 con T y H), estos se almacenarán en `reading.subValues`.
-     */
+    // Devuelve la lectura (o lecturas) de un sensor NO-Modbus según su configuración.
     static SensorReading getSensorReading(const SensorConfig& cfg);
+    
+    // Devuelve la lectura de un sensor Modbus según su configuración
+    static ModbusSensorReading getModbusSensorReading(const ModbusSensorConfig& cfg);
+    
+    // Obtiene todas las lecturas de sensores (normales y Modbus) habilitados
+    static void getAllSensorReadings(std::vector<SensorReading>& normalReadings, 
+                                     std::vector<ModbusSensorReading>& modbusReadings);
 
-    /**
-     * @brief Lee el voltaje de la batería a través del pin analógico del ESP32.
-     * @return Voltaje de la batería en voltios, considerando el divisor de voltaje.
-     */
+    // Lee el voltaje de la batería a través del pin analógico del ESP32.
     static float readBatteryVoltageADC();
 
   private:
@@ -62,18 +62,10 @@ class SensorManager {
     // Lectura unificada de SHT30
     static void readSht30(float& outTemp, float& outHum);
 
-    /**
-     * @brief Redondea un valor flotante a un máximo de 3 decimales.
-     */
+    // Redondea un valor flotante a un máximo de 3 decimales.
     static float roundTo3Decimals(float value);
 
     static void initializeSPISSPins();
-
-    /**
-     * @brief Determina el valor (o valores) del sensor según su tipo. 
-     *        Para la mayoría, se retorna un solo valor float; 
-     *        para SHT30, se llenan `subValues` de la estructura.
-     */
     static float readSensorValue(const SensorConfig &cfg, SensorReading &reading);
 };
 

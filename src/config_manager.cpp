@@ -6,6 +6,9 @@
 #include <Preferences.h>
 #include <Arduino.h> // Incluido para usar Serial
 
+/* =========================================================================
+   FUNCIONES AUXILIARES
+   ========================================================================= */
 // Funciones auxiliares para leer y escribir el JSON completo en cada namespace.
 static void writeNamespace(const char* ns, const StaticJsonDocument<JSON_DOC_SIZE_MEDIUM>& doc) {
     Preferences prefs;
@@ -25,8 +28,12 @@ static void readNamespace(const char* ns, StaticJsonDocument<JSON_DOC_SIZE_MEDIU
     deserializeJson(doc, jsonString);
 }
 
+// Configuración por defecto de sensores NO-modbus
 const SensorConfig ConfigManager::defaultConfigs[] = DEFAULT_SENSOR_CONFIGS;
 
+/* =========================================================================
+   INICIALIZACIÓN Y CONFIGURACIÓN DEL SISTEMA
+   ========================================================================= */
 bool ConfigManager::checkInitialized() {
     StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> doc;
     readNamespace(NAMESPACE_SYSTEM, doc);
@@ -34,6 +41,9 @@ bool ConfigManager::checkInitialized() {
 }
 
 void ConfigManager::initializeDefaultConfig() {
+    /* -------------------------------------------------------------------------
+       1. INICIALIZACIÓN DE CONFIGURACIÓN DEL SISTEMA
+       ------------------------------------------------------------------------- */
     // Sistema unificado: NAMESPACE_SYSTEM (incluye system, sleep y device)
     // Común para todos los tipos de dispositivo
     {
@@ -46,7 +56,10 @@ void ConfigManager::initializeDefaultConfig() {
     }
     
 #ifdef DEVICE_TYPE_ANALOGIC
-    // NTC 100K: NAMESPACE_NTC100K - Solo para dispositivo analógico
+    /* -------------------------------------------------------------------------
+       2. INICIALIZACIÓN DE SENSORES ANALÓGICOS (Solo para dispositivo analógico)
+       ------------------------------------------------------------------------- */
+    // NTC 100K: NAMESPACE_NTC100K
     {
         StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> doc;
         doc[KEY_NTC100K_T1] = DEFAULT_T1_100K;
@@ -58,7 +71,7 @@ void ConfigManager::initializeDefaultConfig() {
         writeNamespace(NAMESPACE_NTC100K, doc);
     }
     
-    // NTC 10K: NAMESPACE_NTC10K - Solo para dispositivo analógico
+    // NTC 10K: NAMESPACE_NTC10K
     {
         StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> doc;
         doc[KEY_NTC10K_T1] = DEFAULT_T1_10K;
@@ -70,7 +83,7 @@ void ConfigManager::initializeDefaultConfig() {
         writeNamespace(NAMESPACE_NTC10K, doc);
     }
     
-    // Conductividad: NAMESPACE_COND - Solo para dispositivo analógico
+    // Conductividad: NAMESPACE_COND
     {
         StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> doc;
         doc[KEY_CONDUCT_CT] = CONDUCTIVITY_DEFAULT_TEMP;
@@ -84,7 +97,7 @@ void ConfigManager::initializeDefaultConfig() {
         writeNamespace(NAMESPACE_COND, doc);
     }
     
-    // pH: NAMESPACE_PH - Solo para dispositivo analógico
+    // pH: NAMESPACE_PH
     {
         StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> doc;
         doc[KEY_PH_V1] = PH_DEFAULT_V1;
@@ -98,20 +111,71 @@ void ConfigManager::initializeDefaultConfig() {
     }
 #endif
     
-    // Inicializar configuración de sensores - Común para todos los tipos
-    initializeSensorConfigs();
+    /* -------------------------------------------------------------------------
+       3. INICIALIZACIÓN DE SENSORES NO-MODBUS
+       ------------------------------------------------------------------------- */
+    {
+        Preferences prefs;
+        prefs.begin(NAMESPACE_SENSORS, false);
+        StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> doc;
+        JsonArray sensorArray = doc.to<JsonArray>(); // Array raíz
+
+        for (const auto& config : ConfigManager::defaultConfigs) {
+            JsonObject sensorObj = sensorArray.createNestedObject();
+            sensorObj[KEY_SENSOR] = config.configKey;
+            sensorObj[KEY_SENSOR_ID] = config.sensorId;
+            sensorObj[KEY_SENSOR_TYPE] = static_cast<int>(config.type);
+            sensorObj[KEY_SENSOR_CHANNEL] = config.channel;
+            sensorObj[KEY_SENSOR_ID_TEMPERATURE_SENSOR] = config.tempSensorId;
+            sensorObj[KEY_SENSOR_ENABLE] = config.enable;
+        }
+        
+        String jsonString;
+        serializeJson(doc, jsonString);
+        prefs.putString(NAMESPACE_SENSORS, jsonString.c_str());
+        prefs.end();
+    }
     
-    // LoRa: NAMESPACE_LORAWAN - Común para todos los tipos
+    /* -------------------------------------------------------------------------
+       4. INICIALIZACIÓN DE CONFIGURACIÓN DE LORA
+       ------------------------------------------------------------------------- */
     {
         StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> doc;
-
-        //FOR OTAA
         doc[KEY_LORA_JOIN_EUI]      = DEFAULT_JOIN_EUI;
         doc[KEY_LORA_DEV_EUI]       = DEFAULT_DEV_EUI;
-        doc[KEY_LORA_NWK_KEY]      = DEFAULT_NWK_KEY;
-        doc[KEY_LORA_APP_KEY]      = DEFAULT_APP_KEY;
+        doc[KEY_LORA_NWK_KEY]       = DEFAULT_NWK_KEY;
+        doc[KEY_LORA_APP_KEY]       = DEFAULT_APP_KEY;
         writeNamespace(NAMESPACE_LORAWAN, doc);
     }
+
+#if defined(DEVICE_TYPE_MODBUS) || defined(DEVICE_TYPE_ANALOGIC)
+    /* -------------------------------------------------------------------------
+       5. INICIALIZACIÓN DE SENSORES MODBUS
+       ------------------------------------------------------------------------- */
+    {
+        Preferences prefs;
+        prefs.begin(NAMESPACE_SENSORS_MODBUS, false);
+        StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> doc;
+        JsonArray sensorArray = doc.to<JsonArray>(); 
+
+        // Cargamos un default (definido en config.h)
+        static const ModbusSensorConfig defaultModbusSensors[] = DEFAULT_MODBUS_SENSOR_CONFIGS;
+        size_t count = sizeof(defaultModbusSensors)/sizeof(defaultModbusSensors[0]);
+
+        for (size_t i = 0; i < count; i++) {
+            JsonObject sensorObj = sensorArray.createNestedObject();
+            sensorObj[KEY_MODBUS_SENSOR_ID]    = defaultModbusSensors[i].sensorId;
+            sensorObj[KEY_MODBUS_SENSOR_TYPE]  = (int)defaultModbusSensors[i].type;
+            sensorObj[KEY_MODBUS_SENSOR_ADDR] = defaultModbusSensors[i].address;
+            sensorObj[KEY_MODBUS_SENSOR_ENABLE]   = defaultModbusSensors[i].enable;
+        }
+        
+        String jsonString;
+        serializeJson(doc, jsonString);
+        prefs.putString(NAMESPACE_SENSORS_MODBUS, jsonString.c_str());
+        prefs.end();
+    }
+#endif
 }
 
 void ConfigManager::getSystemConfig(bool &initialized, uint32_t &sleepTime, String &deviceId, String &stationId) {
@@ -133,8 +197,168 @@ void ConfigManager::setSystemConfig(bool initialized, uint32_t sleepTime, const 
     writeNamespace(NAMESPACE_SYSTEM, doc);
 }
 
+/* =========================================================================
+   CONFIGURACIÓN DE SENSORES NO-MODBUS
+   ========================================================================= */
+std::vector<SensorConfig> ConfigManager::getAllSensorConfigs() {
+    std::vector<SensorConfig> configs;
+    StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> doc;
+    readNamespace(NAMESPACE_SENSORS, doc);
+    
+    if (!doc.is<JsonArray>()) {
+        // Si no es un arreglo, no hay nada que leer
+        return configs;
+    }
+    
+    JsonArray sensorArray = doc.as<JsonArray>();
+    for (JsonObject sensorObj : sensorArray) {
+        SensorConfig config;
+        const char* cKey = sensorObj[KEY_SENSOR] | "";
+        strncpy(config.configKey, cKey, sizeof(config.configKey));
+        const char* sensorId = sensorObj[KEY_SENSOR_ID] | "";
+        strncpy(config.sensorId, sensorId, sizeof(config.sensorId));
+        config.type = static_cast<SensorType>(sensorObj[KEY_SENSOR_TYPE] | 0);
+        config.channel = sensorObj[KEY_SENSOR_CHANNEL] | 0;
+        const char* tempSensorId = sensorObj[KEY_SENSOR_ID_TEMPERATURE_SENSOR] | "";
+        strncpy(config.tempSensorId, tempSensorId, sizeof(config.tempSensorId));
+        config.enable = sensorObj[KEY_SENSOR_ENABLE] | false;
+        
+        configs.push_back(config);
+    }
+    
+    return configs;
+}
+
+std::vector<SensorConfig> ConfigManager::getEnabledSensorConfigs() {
+    std::vector<SensorConfig> allSensors = getAllSensorConfigs();
+    
+    std::vector<SensorConfig> enabledSensors;
+    for (const auto& sensor : allSensors) {
+        if (sensor.enable && strlen(sensor.sensorId) > 0) {
+            enabledSensors.push_back(sensor);
+        }
+    }
+    
+    return enabledSensors;
+}
+
+void ConfigManager::setSensorsConfigs(const std::vector<SensorConfig>& configs) {
+    Preferences prefs;
+    prefs.begin(NAMESPACE_SENSORS, false);
+    StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> doc;
+    JsonArray sensorArray = doc.to<JsonArray>();
+    
+    for (const auto& sensor : configs) {
+        JsonObject sensorObj = sensorArray.createNestedObject();
+        sensorObj[KEY_SENSOR] = sensor.configKey;
+        sensorObj[KEY_SENSOR_ID] = sensor.sensorId;
+        sensorObj[KEY_SENSOR_TYPE] = static_cast<int>(sensor.type);
+        sensorObj[KEY_SENSOR_CHANNEL] = sensor.channel;
+        sensorObj[KEY_SENSOR_ID_TEMPERATURE_SENSOR] = sensor.tempSensorId;
+        sensorObj[KEY_SENSOR_ENABLE] = sensor.enable;
+    }
+    
+    String jsonString;
+    serializeJson(doc, jsonString);
+    prefs.putString(NAMESPACE_SENSORS, jsonString.c_str());
+    prefs.end();
+}
+
+/* =========================================================================
+   CONFIGURACIÓN DE LORA
+   ========================================================================= */
+LoRaConfig ConfigManager::getLoRaConfig() {
+    StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> doc;
+    readNamespace(NAMESPACE_LORAWAN, doc);
+    
+    LoRaConfig config;
+    config.joinEUI  = doc[KEY_LORA_JOIN_EUI] | DEFAULT_JOIN_EUI;
+    config.devEUI   = doc[KEY_LORA_DEV_EUI]  | DEFAULT_DEV_EUI;
+    config.nwkKey   = doc[KEY_LORA_NWK_KEY]  | DEFAULT_NWK_KEY;
+    config.appKey   = doc[KEY_LORA_APP_KEY]  | DEFAULT_APP_KEY;
+    
+    return config;
+}
+
+void ConfigManager::setLoRaConfig(
+    const String &joinEUI, 
+    const String &devEUI, 
+    const String &nwkKey, 
+    const String &appKey) {
+    StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> doc;
+    readNamespace(NAMESPACE_LORAWAN, doc);
+    
+    doc[KEY_LORA_JOIN_EUI] = joinEUI;
+    doc[KEY_LORA_DEV_EUI]  = devEUI;
+    doc[KEY_LORA_NWK_KEY]  = nwkKey;
+    doc[KEY_LORA_APP_KEY]  = appKey;
+    
+    writeNamespace(NAMESPACE_LORAWAN, doc);
+}
+
+/* =========================================================================
+   CONFIGURACIÓN DE SENSORES MODBUS
+   ========================================================================= */
+#if defined(DEVICE_TYPE_MODBUS) || defined(DEVICE_TYPE_ANALOGIC)
+
+void ConfigManager::setModbusSensorsConfigs(const std::vector<ModbusSensorConfig>& configs) {
+    Preferences prefs;
+    prefs.begin(NAMESPACE_SENSORS_MODBUS, false);
+    StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> doc;
+    JsonArray sensorArray = doc.to<JsonArray>();
+    
+    for (const auto& sensor : configs) {
+        JsonObject sensorObj = sensorArray.createNestedObject();
+        sensorObj[KEY_MODBUS_SENSOR_ID] = sensor.sensorId;
+        sensorObj[KEY_MODBUS_SENSOR_TYPE] = static_cast<int>(sensor.type);
+        sensorObj[KEY_MODBUS_SENSOR_ADDR] = sensor.address;
+        sensorObj[KEY_MODBUS_SENSOR_ENABLE] = sensor.enable;
+    }
+    
+    String jsonString;
+    serializeJson(doc, jsonString);
+    prefs.putString(NAMESPACE_SENSORS_MODBUS, jsonString.c_str());
+    prefs.end();
+}
+
+std::vector<ModbusSensorConfig> ConfigManager::getAllModbusSensorConfigs() {
+    StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> doc;
+    readNamespace(NAMESPACE_SENSORS_MODBUS, doc);
+    
+    std::vector<ModbusSensorConfig> configs;
+    
+    if (doc.is<JsonArray>()) {
+        JsonArray array = doc.as<JsonArray>();
+        
+        for (JsonObject sensorObj : array) {
+            ModbusSensorConfig config;
+            strlcpy(config.sensorId, sensorObj[KEY_MODBUS_SENSOR_ID] | "", sizeof(config.sensorId));
+            config.type = static_cast<ModbusSensorType>(sensorObj[KEY_MODBUS_SENSOR_TYPE] | 0);
+            config.address = sensorObj[KEY_MODBUS_SENSOR_ADDR] | 1;
+            config.enable = sensorObj[KEY_MODBUS_SENSOR_ENABLE] | false;
+            
+            configs.push_back(config);
+        }
+    }
+    
+    return configs;
+}
+
+std::vector<ModbusSensorConfig> ConfigManager::getEnabledModbusSensorConfigs() {
+    std::vector<ModbusSensorConfig> all = getAllModbusSensorConfigs();
+    std::vector<ModbusSensorConfig> enabled;
+    for (auto &m : all) {
+        if (m.enable) enabled.push_back(m);
+    }
+    return enabled;
+}
+
+#endif // defined(DEVICE_TYPE_MODBUS) || defined(DEVICE_TYPE_ANALOGIC)
+
+/* =========================================================================
+   CONFIGURACIÓN DE SENSORES ANALÓGICOS (Solo para dispositivo analógico)
+   ========================================================================= */
 #ifdef DEVICE_TYPE_ANALOGIC
-// Implementación de métodos específicos para dispositivo analógico
 
 void ConfigManager::getNTC100KConfig(double& t1, double& r1, double& t2, double& r2, double& t3, double& r3) {
     StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> doc;
@@ -236,122 +460,3 @@ void ConfigManager::setPHConfig(float v1, float t1, float v2, float t2, float v3
     writeNamespace(NAMESPACE_PH, doc);
 }
 #endif
-
-std::vector<SensorConfig> ConfigManager::getAllSensorConfigs() {
-    std::vector<SensorConfig> configs;
-    StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> doc;
-    readNamespace(NAMESPACE_SENSORS, doc);
-    
-    if (!doc.is<JsonArray>()) {
-        // Si no es un arreglo, no hay nada que leer
-        return configs;
-    }
-    
-    JsonArray sensorArray = doc.as<JsonArray>();
-    for (JsonObject sensorObj : sensorArray) {
-        SensorConfig config;
-        const char* cKey = sensorObj[KEY_SENSOR] | "";
-        strncpy(config.configKey, cKey, sizeof(config.configKey));
-        const char* sensorId = sensorObj[KEY_SENSOR_ID] | "";
-        strncpy(config.sensorId, sensorId, sizeof(config.sensorId));
-        config.type = static_cast<SensorType>(sensorObj[KEY_SENSOR_TYPE] | 0);
-        config.channel = sensorObj[KEY_SENSOR_CHANNEL] | 0;
-        const char* tempSensorId = sensorObj[KEY_SENSOR_ID_TEMPERATURE_SENSOR] | "";
-        strncpy(config.tempSensorId, tempSensorId, sizeof(config.tempSensorId));
-        config.enable = sensorObj[KEY_SENSOR_ENABLE] | false;
-        
-        configs.push_back(config);
-    }
-    
-    return configs;
-}
-
-std::vector<SensorConfig> ConfigManager::getEnabledSensorConfigs() {
-    // Obtener todos los sensores configurados
-    std::vector<SensorConfig> allSensors = getAllSensorConfigs();
-    
-    // Filtrar solo los sensores habilitados
-    std::vector<SensorConfig> enabledSensors;
-    for (const auto& sensor : allSensors) {
-        if (sensor.enable && strlen(sensor.sensorId) > 0) {
-            enabledSensors.push_back(sensor);
-        }
-    }
-    
-    return enabledSensors;
-}
-
-void ConfigManager::initializeSensorConfigs() {
-    Preferences prefs;
-    prefs.begin(NAMESPACE_SENSORS, false);
-    StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> doc;
-    JsonArray sensorArray = doc.to<JsonArray>(); // Array raíz
-
-    for (const auto& config : ConfigManager::defaultConfigs) {
-        JsonObject sensorObj = sensorArray.createNestedObject();
-        sensorObj[KEY_SENSOR] = config.configKey;
-        sensorObj[KEY_SENSOR_ID] = config.sensorId;
-        sensorObj[KEY_SENSOR_TYPE] = static_cast<int>(config.type);
-        sensorObj[KEY_SENSOR_CHANNEL] = config.channel;
-        sensorObj[KEY_SENSOR_ID_TEMPERATURE_SENSOR] = config.tempSensorId;
-        sensorObj[KEY_SENSOR_ENABLE] = config.enable;
-    }
-    
-    String jsonString;
-    serializeJson(doc, jsonString);
-    // Se guarda usando el mismo nombre del namespace
-    prefs.putString(NAMESPACE_SENSORS, jsonString.c_str());
-    prefs.end();
-}
-
-void ConfigManager::setSensorsConfigs(const std::vector<SensorConfig>& configs) {
-    Preferences prefs;
-    prefs.begin(NAMESPACE_SENSORS, false);
-    StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> doc;
-    JsonArray sensorArray = doc.to<JsonArray>();
-    
-    for (const auto& sensor : configs) {
-        JsonObject sensorObj = sensorArray.createNestedObject();
-        sensorObj[KEY_SENSOR] = sensor.configKey;
-        sensorObj[KEY_SENSOR_ID] = sensor.sensorId;
-        sensorObj[KEY_SENSOR_TYPE] = static_cast<int>(sensor.type);
-        sensorObj[KEY_SENSOR_ID_TEMPERATURE_SENSOR] = sensor.tempSensorId;
-        sensorObj[KEY_SENSOR_ENABLE] = sensor.enable;
-    }
-    
-    String jsonString;
-    serializeJson(doc, jsonString);
-    prefs.putString(NAMESPACE_SENSORS, jsonString.c_str());
-    prefs.end();
-}
-
-LoRaConfig ConfigManager::getLoRaConfig() {
-    StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> doc;
-    readNamespace(NAMESPACE_LORAWAN, doc);
-    
-    LoRaConfig config;
-    //FOR OTAA
-    config.joinEUI     = doc[KEY_LORA_JOIN_EUI]      | DEFAULT_JOIN_EUI;
-    config.devEUI     = doc[KEY_LORA_DEV_EUI]      | DEFAULT_DEV_EUI;
-    config.nwkKey     = doc[KEY_LORA_NWK_KEY]      | DEFAULT_NWK_KEY;
-    config.appKey     = doc[KEY_LORA_APP_KEY]      | DEFAULT_APP_KEY;
-    
-    return config;
-}
-
-void ConfigManager::setLoRaConfig(
-    const String &joinEUI, 
-    const String &devEUI, 
-    const String &nwkKey, 
-    const String &appKey) {
-    StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> doc;
-    readNamespace(NAMESPACE_LORAWAN, doc);
-    
-    //FOR OTAA
-    doc[KEY_LORA_JOIN_EUI]      = joinEUI;
-    doc[KEY_LORA_DEV_EUI]       = devEUI;
-    doc[KEY_LORA_NWK_KEY]      = nwkKey;
-    doc[KEY_LORA_APP_KEY]      = appKey;
-    
-    writeNamespace(NAMESPACE_LORAWAN, doc);
-}

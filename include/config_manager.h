@@ -17,33 +17,35 @@ struct LoRaConfig {
 
 class ConfigManager {
 public:
-    // Banderas de inicialización
+    /* =========================================================================
+       INICIALIZACIÓN Y CONFIGURACIÓN DEL SISTEMA
+       ========================================================================= */
+    // Verificación e inicialización
     static bool checkInitialized();
     static void initializeDefaultConfig();
     
-    // Getters y setters para calibración NTC - Solo para dispositivo analógico
-    static void getNTC100KConfig(double& t1, double& r1, double& t2, double& r2, double& t3, double& r3);
-    static void setNTC100KConfig(double t1, double r1, double t2, double r2, double t3, double r3);
-    static void getNTC10KConfig(double& t1, double& r1, double& t2, double& r2, double& t3, double& r3);
-    static void setNTC10KConfig(double t1, double r1, double t2, double r2, double t3, double r3);
-    
-    // Getters y setters para calibración de conductividad - Solo para dispositivo analógico
-    static void getConductivityConfig(float& calTemp, float& coefComp, 
-                                    float& v1, float& t1, float& v2, float& t2, float& v3, float& t3);
-    static void setConductivityConfig(float calTemp, float coefComp,
-                                    float v1, float t1, float v2, float t2, float v3, float t3);
-    
-    // Getters y setters para calibración de pH - Solo para dispositivo analógico
-    static void getPHConfig(float& v1, float& t1, float& v2, float& t2, float& v3, float& t3, float& defaultTemp);
-    static void setPHConfig(float v1, float t1, float v2, float t2, float v3, float t3, float defaultTemp);
+    // Configuración del sistema
+    static void getSystemConfig(bool &initialized, uint32_t &sleepTime, String &deviceId, String &stationId);
+    static void setSystemConfig(bool initialized, uint32_t sleepTime, const String &deviceId, const String &stationId);
 
-    // Métodos para configuración de sensores - Común para todos los tipos
+    /* =========================================================================
+       CONFIGURACIÓN DE SENSORES NO-MODBUS
+       ========================================================================= */
+    // Gestión de sensores generales
     static void setSensorsConfigs(const std::vector<SensorConfig>& configs);
     static std::vector<SensorConfig> getAllSensorConfigs();
     static std::vector<SensorConfig> getEnabledSensorConfigs();
-    static void initializeSensorConfigs();
 
-    // Métodos para la configuración de LoRa - Común para todos los tipos
+    /* =========================================================================
+       CONFIGURACIÓN DE SENSORES MODBUS
+       ========================================================================= */
+    static void setModbusSensorsConfigs(const std::vector<ModbusSensorConfig>& configs);
+    static std::vector<ModbusSensorConfig> getAllModbusSensorConfigs();
+    static std::vector<ModbusSensorConfig> getEnabledModbusSensorConfigs();
+    
+    /* =========================================================================
+       CONFIGURACIÓN DE LORA
+       ========================================================================= */
     static LoRaConfig getLoRaConfig();
     static void setLoRaConfig(
         const String &joinEUI, 
@@ -51,10 +53,31 @@ public:
         const String &nwkKey, 
         const String &appKey);
     
-    // Métodos unificados para la configuración de sistema - Común para todos los tipos
-    static void getSystemConfig(bool &initialized, uint32_t &sleepTime, String &deviceId, String &stationId);
-    static void setSystemConfig(bool initialized, uint32_t sleepTime, const String &deviceId, const String &stationId);
+#ifdef DEVICE_TYPE_ANALOGIC
+    /* =========================================================================
+       CONFIGURACIÓN DE SENSORES ANALÓGICOS (Solo para dispositivo analógico)
+       ========================================================================= */
+    // NTC 100K
+    static void getNTC100KConfig(double& t1, double& r1, double& t2, double& r2, double& t3, double& r3);
+    static void setNTC100KConfig(double t1, double r1, double t2, double r2, double t3, double r3);
+    
+    // NTC 10K
+    static void getNTC10KConfig(double& t1, double& r1, double& t2, double& r2, double& t3, double& r3);
+    static void setNTC10KConfig(double t1, double r1, double t2, double r2, double t3, double r3);
+    
+    // Conductividad
+    static void getConductivityConfig(float& calTemp, float& coefComp, 
+                                    float& v1, float& t1, float& v2, float& t2, float& v3, float& t3);
+    static void setConductivityConfig(float calTemp, float coefComp,
+                                    float v1, float t1, float v2, float t2, float v3, float t3);
+    
+    // pH
+    static void getPHConfig(float& v1, float& t1, float& v2, float& t2, float& v3, float& t3, float& defaultTemp);
+    static void setPHConfig(float v1, float t1, float v2, float t2, float v3, float t3, float defaultTemp);
+#endif
 
 private:
-    static const SensorConfig defaultConfigs[];
+    // Configuraciones por defecto
+    static const SensorConfig defaultConfigs[]; // Configs no-Modbus
 };
+

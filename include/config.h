@@ -7,7 +7,7 @@
 #define DEVICE_TYPE_MODBUS
 
 // Configuración de depuración - Comentar para deshabilitar mensajes de depuración
-#define DEBUG_ENABLED
+// #define DEBUG_ENABLED
 
 #ifdef DEVICE_TYPE_BASIC
 
@@ -40,7 +40,7 @@
 #define LORA_DIO1_PIN       3
 
 // Serial
-#define SERIAL_BAUD         115200
+#define SERIAL_BAUD_RATE        9600
 
 // Deep Sleep
 #define DEFAULT_TIME_TO_SLEEP   30
@@ -95,9 +95,9 @@ const double conversionFactor = (R1 + R2) / R1;
 #define KEY_LORAWAN_SESSION     "lorawan_session"
 
 // Tamaños de documentos JSON - Centralizados
-#define JSON_DOC_SIZE_SMALL   300   // Para configuraciones simples
-#define JSON_DOC_SIZE_MEDIUM  1024  // Para la mayoría de configuraciones
-#define JSON_DOC_SIZE_LARGE   2048  // Para arrays grandes de sensores o configuraciones complejas
+#define JSON_DOC_SIZE_SMALL   300
+#define JSON_DOC_SIZE_MEDIUM  1024
+#define JSON_DOC_SIZE_LARGE   2048
 
 // Batería
 #define BATTERY_PIN             1
@@ -107,7 +107,6 @@ const double conversionFactor = (R1 + R2) / R1;
 #define POWER_STABILIZE_DELAY   20
 
 // Configuración default sensores
-// Se ELIMINAN las líneas con S30_T y S30_H, sustituyéndolas por una sola entrada SHT30
 #define DEFAULT_SENSOR_CONFIGS { \
     {"R", "RTD1", RTD, 0, "", true}, \
     {"D", "DS1", DS18B20, 0, "", true}, \
@@ -148,7 +147,7 @@ const double conversionFactor = (R1 + R2) / R1;
 #define LORA_DIO1_PIN       3
 
 // Serial
-#define SERIAL_BAUD         115200
+#define SERIAL_BAUD_RATE         9600
 
 // Deep Sleep
 #define DEFAULT_TIME_TO_SLEEP   30
@@ -182,6 +181,7 @@ const double conversionFactor = (R1 + R2) / R1;
 #define NAMESPACE_SENSORS       "sensors"
 #define NAMESPACE_LORAWAN       "lorawan"
 #define NAMESPACE_LORA_SESSION  "lorasession"
+#define NAMESPACE_SENSORS_MODBUS "sensors_modbus"
 
 // Claves
 #define KEY_INITIALIZED         "initialized"
@@ -201,6 +201,19 @@ const double conversionFactor = (R1 + R2) / R1;
 #define KEY_LORA_NWK_KEY        "nwkKey"
 #define KEY_LORA_APP_KEY        "appKey"
 #define KEY_LORAWAN_SESSION     "lorawan_session"
+
+// Claves para Modbus
+#define KEY_MODBUS_SENSOR_ID    "id"
+#define KEY_MODBUS_SENSOR_TYPE  "t"
+#define KEY_MODBUS_SENSOR_ADDR  "ad"
+#define KEY_MODBUS_SENSOR_ENABLE "e"
+
+// Configuración Modbus
+#define MODBUS_BAUDRATE         9600
+#define MODBUS_SERIAL_CONFIG    SERIAL_8N1
+#define MODBUS_RESPONSE_TIMEOUT 1000  // Tiempo de espera para respuesta en ms
+#define MODBUS_INTER_FRAME_DELAY 20   // Tiempo entre tramas en ms
+#define MODBUS_MAX_REGISTERS    20    // Número máximo de registros en una lectura
 
 // Tamaños de documentos JSON - Centralizados
 #define JSON_DOC_SIZE_SMALL   300
@@ -306,8 +319,7 @@ const double conversionFactor = (R1 + R2) / R1;
 #define KEY_PH_T3              "ph_t3"
 #define KEY_PH_CT              "ph_ct"
 
-// Configuración sensores
-// Se quitan las dos líneas de S30_T y S30_H y se agrega una para SHT30
+// Configuración default sensores
 #define DEFAULT_SENSOR_CONFIGS { \
     {"0", "NTC1",  N100K,  0, "", true}, \
     {"1", "NTC2",  N100K,  1, "", true}, \
@@ -319,6 +331,11 @@ const double conversionFactor = (R1 + R2) / R1;
     {"R", "RTD1",  RTD,    0, "", true}, \
     {"D", "DS1",   DS18B20,0, "", true}, \
     {"I2C", "SHT30", SHT30, 0, "", true} \
+}
+
+
+#define DEFAULT_MODBUS_SENSOR_CONFIGS { \
+    {"ModbusEnv1", ENV_SENSOR, 1, true} \
 }
 
 #endif
@@ -360,7 +377,7 @@ const double conversionFactor = (R1 + R2) / R1;
 #define LORA_DIO1_PIN       3
 
 // Serial
-#define SERIAL_BAUD         115200
+#define SERIAL_BAUD_RATE         9600
 
 // Deep Sleep
 #define DEFAULT_TIME_TO_SLEEP   30
@@ -390,10 +407,11 @@ const double R2 = 1500000.0;
 const double conversionFactor = (R1 + R2) / R1;
 
 // Namespaces
-#define NAMESPACE_SYSTEM        "system"
-#define NAMESPACE_SENSORS       "sensors"
-#define NAMESPACE_LORAWAN       "lorawan"
-#define NAMESPACE_LORA_SESSION  "lorasession"
+#define NAMESPACE_SYSTEM                "system"
+#define NAMESPACE_SENSORS               "sensors"
+#define NAMESPACE_LORAWAN               "lorawan"
+#define NAMESPACE_LORA_SESSION          "lorasession"
+#define NAMESPACE_SENSORS_MODBUS        "sensors_modbus"
 
 // Claves
 #define KEY_INITIALIZED                  "initialized"
@@ -414,6 +432,19 @@ const double conversionFactor = (R1 + R2) / R1;
 #define KEY_LORA_APP_KEY                 "appKey"
 #define KEY_LORAWAN_SESSION              "lorawan_session"
 
+// Claves para Modbus
+#define KEY_MODBUS_SENSOR_ID    "id"
+#define KEY_MODBUS_SENSOR_TYPE  "t"
+#define KEY_MODBUS_SENSOR_ADDR  "ad"
+#define KEY_MODBUS_SENSOR_ENABLE "e"
+
+// Configuración Modbus
+#define MODBUS_BAUDRATE         9600
+#define MODBUS_SERIAL_CONFIG    SERIAL_8N1
+#define MODBUS_RESPONSE_TIMEOUT 1000  // Tiempo de espera para respuesta en ms
+#define MODBUS_INTER_FRAME_DELAY 20   // Tiempo entre tramas en ms
+#define MODBUS_MAX_REGISTERS    20    // Número máximo de registros en una lectura
+
 // Tamaños JSON
 #define JSON_DOC_SIZE_SMALL   300
 #define JSON_DOC_SIZE_MEDIUM  1024
@@ -425,11 +456,14 @@ const double conversionFactor = (R1 + R2) / R1;
 #define POWER_STABILIZE_DELAY   20
 
 // Configuración default sensores
-// Se eliminan S30_T y S30_H, se agrega SHT30 unificado
 #define DEFAULT_SENSOR_CONFIGS { \
     {"R", "RTD1", RTD, 0, "", true}, \
     {"D", "DS1", DS18B20, 0, "", true}, \
     {"I2C", "SHT30", SHT30, 0, "", true} \
+}
+
+#define DEFAULT_MODBUS_SENSOR_CONFIGS { \
+    {"Env1", ENV_SENSOR, 1, true} \
 }
 
 #endif

@@ -36,7 +36,7 @@ public:
     static int16_t lwActivate(LoRaWANNode& node);
 
     /**
-     * @brief Envía el payload de sensores fragmentado para no superar el tamaño máximo permitido.
+     * @brief Envía el payload de sensores estándar fragmentado para no superar el tamaño máximo permitido.
      * @param readings Vector con todas las lecturas de sensores.
      * @param node Referencia al nodo LoRaWAN
      * @param deviceId ID del dispositivo
@@ -44,6 +44,22 @@ public:
      * @param rtcManager Referencia al gestor RTC para obtener timestamp
      */
     static void sendFragmentedPayload(const std::vector<SensorReading>& readings, 
+                                     LoRaWANNode& node,
+                                     const String& deviceId, 
+                                     const String& stationId, 
+                                     RTCManager& rtcManager);
+
+    /**
+     * @brief Envía el payload de sensores estándar y Modbus fragmentado para no superar el tamaño máximo permitido.
+     * @param normalReadings Vector con lecturas de sensores estándar
+     * @param modbusReadings Vector con lecturas de sensores Modbus
+     * @param node Referencia al nodo LoRaWAN
+     * @param deviceId ID del dispositivo
+     * @param stationId ID de la estación
+     * @param rtcManager Referencia al gestor RTC para obtener timestamp
+     */
+    static void sendFragmentedPayload(const std::vector<SensorReading>& normalReadings, 
+                                     const std::vector<ModbusSensorReading>& modbusReadings,
                                      LoRaWANNode& node,
                                      const String& deviceId, 
                                      const String& stationId, 
