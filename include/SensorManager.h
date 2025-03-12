@@ -4,7 +4,7 @@
 #include <Arduino.h>
 #include <vector>
 #include "sensor_types.h"
-#include "RTCManager.h"
+#include <RTClib.h>
 #include "clsPCA9555.h"
 #include "PowerManager.h"
 #include "MAX31865.h"
@@ -16,7 +16,7 @@
 #include "ModbusSensorManager.h"
 
 // Variables y objetos globales declarados en main.cpp
-extern RTCManager rtcManager;
+extern RTC_DS3231 rtc;
 extern PCA9555 ioExpander;
 extern PowerManager powerManager;
 extern SPIClass spi;

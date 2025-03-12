@@ -15,7 +15,7 @@
 #include "PowerManager.h"
 #include "MAX31865.h"
 #include <RadioLib.h>
-#include "RTCManager.h"
+#include <RTClib.h>
 #include "sensor_types.h"
 #include "SensorManager.h"
 #include "nvs_flash.h"
@@ -44,7 +44,7 @@ String deviceId;
 String stationId;
 bool systemInitialized;
 
-RTCManager rtcManager;
+RTC_DS3231 rtc;
 PCA9555 ioExpander(I2C_ADDRESS_PCA9555, I2C_SDA_PIN, I2C_SCL_PIN);
 PowerManager powerManager(ioExpander);
 
@@ -77,9 +77,13 @@ Preferences store;
 void setup() {
     DEBUG_BEGIN(SERIAL_BAUD_RATE);
 
-    
     SleepManager::releaseHeldPins();
     pinMode(CONFIG_PIN, INPUT);
+
+    // Inicialización de hardware
+    if (!HardwareManager::initHardware(ioExpander, powerManager, sht30Sensor)) {
+        DEBUG_PRINTLN("Error en la inicialización del hardware");
+    }
 
     // Inicialización del NVS y de hardware I2C/IO
     // preferences.clear();
@@ -93,10 +97,6 @@ void setup() {
     }
     ConfigManager::getSystemConfig(systemInitialized, timeToSleep, deviceId, stationId);
 
-    // Inicialización de hardware
-    if (!HardwareManager::initHardware(ioExpander, powerManager, sht30Sensor)) {
-        DEBUG_PRINTLN("Error en la inicialización del hardware");
-    }
 
     // Modo configuración BLE
     if (BLEHandler::checkConfigMode(ioExpander)) {
@@ -104,8 +104,14 @@ void setup() {
     }
 
     // Inicializar RTC
-    if (!rtcManager.begin()) {
+    if (!rtc.begin()) {
         DEBUG_PRINTLN("No se pudo encontrar RTC");
+    }
+
+    // Configurar el RTC con la hora de compilación si no está configurado
+    if (rtc.lostPower()) {
+        rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+        DEBUG_PRINTLN("RTC configurado con hora de compilación");
     }
 
     // Encender 3.3V
@@ -149,7 +155,8 @@ void loop() {
 
     SensorManager::getAllSensorReadings(normalReadings, modbusReadings);
 
-    LoRaManager::sendFragmentedPayload(normalReadings, modbusReadings, node, deviceId, stationId, rtcManager);
+    // Usar el nuevo formato delimitado en lugar de JSON
+    LoRaManager::sendDelimitedPayload(normalReadings, modbusReadings, node, deviceId, stationId, rtc);
 
     // Dormir
     SleepManager::goToDeepSleep(timeToSleep, powerManager, ioExpander, &radio, node, LWsession, spi);

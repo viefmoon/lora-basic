@@ -13,9 +13,7 @@ bool HardwareManager::initHardware(PCA9555& ioExpander, PowerManager& powerManag
     // Inicializar SHT30 para reset
     sht30Sensor.begin(Wire, SHT30_I2C_ADDR_44);
     sht30Sensor.stopMeasurement();
-    delay(1);
     sht30Sensor.softReset();
-    delay(100);
     
     // Inicializar PCA9555 para expansión de I/O
     if (!ioExpander.begin()) {

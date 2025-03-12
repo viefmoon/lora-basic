@@ -5,7 +5,6 @@
 #include <DallasTemperature.h>
 #endif
 #include "MAX31865.h"
-#include "RTCManager.h"
 #include "sensor_types.h"
 #include "config.h"
 #include <Preferences.h>
