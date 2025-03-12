@@ -7,7 +7,7 @@
 #define DEVICE_TYPE_MODBUS
 
 // Configuración de depuración - Comentar para deshabilitar mensajes de depuración
-// #define DEBUG_ENABLED
+#define DEBUG_ENABLED
 
 #ifdef DEVICE_TYPE_BASIC
 

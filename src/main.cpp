@@ -78,12 +78,6 @@ void setup() {
     DEBUG_BEGIN(SERIAL_BAUD_RATE);
 
     SleepManager::releaseHeldPins();
-    pinMode(CONFIG_PIN, INPUT);
-
-    // Inicialización de hardware
-    if (!HardwareManager::initHardware(ioExpander, powerManager, sht30Sensor)) {
-        DEBUG_PRINTLN("Error en la inicialización del hardware");
-    }
 
     // Inicialización del NVS y de hardware I2C/IO
     // preferences.clear();
@@ -97,6 +91,15 @@ void setup() {
     }
     ConfigManager::getSystemConfig(systemInitialized, timeToSleep, deviceId, stationId);
 
+    // Inicialización de hardware
+    if (!HardwareManager::initHardware(ioExpander, powerManager, sht30Sensor)) {
+        DEBUG_PRINTLN("Error en la inicialización del hardware");
+    }
+
+    // Configuración de pines de modo config
+    pinMode(CONFIG_PIN, INPUT);
+    ioExpander.pinMode(CONFIG_LED_PIN, OUTPUT);
+
 
     // Modo configuración BLE
     if (BLEHandler::checkConfigMode(ioExpander)) {
@@ -107,15 +110,6 @@ void setup() {
     if (!rtc.begin()) {
         DEBUG_PRINTLN("No se pudo encontrar RTC");
     }
-
-    // Configurar el RTC con la hora de compilación si no está configurado
-    if (rtc.lostPower()) {
-        rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
-        DEBUG_PRINTLN("RTC configurado con hora de compilación");
-    }
-
-    // Encender 3.3V
-    powerManager.power3V3On();
 
     // Inicializar sensores
     SensorManager::beginSensors();
@@ -130,14 +124,13 @@ void setup() {
     state = LoRaManager::lwActivate(node);
     if (state != RADIOLIB_LORAWAN_NEW_SESSION && state != RADIOLIB_LORAWAN_SESSION_RESTORED) {
         DEBUG_PRINTF("Error activando LoRaWAN: %d\n", state);
+        DEBUG_PRINTLN("Llamando a goToDeepSleep...");
         SleepManager::goToDeepSleep(timeToSleep, powerManager, ioExpander, &radio, node, LWsession, spi);
         return;
     }
 
     // Ajustar datarate
     LoRaManager::setDatarate(node, 3);
-
-    ioExpander.pinMode(CONFIG_LED_PIN, OUTPUT);
 }
 
 //--------------------------------------------------------------------------------------------

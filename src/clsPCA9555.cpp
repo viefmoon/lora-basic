@@ -77,6 +77,7 @@ PCA9555::PCA9555(uint8_t address, int sda, int scl, int interruptPin) {
 
 // Checks if PCA9555 is responsive. Refer to Wire.endTransmission() from Arduino for details.
 bool PCA9555::begin() {
+
     
     // Intentar varias veces la inicialización
     for (int intento = 0; intento < 3; intento++) {
@@ -101,7 +102,7 @@ bool PCA9555::begin() {
             return true;
         }
         
-        delay(20);  // Esperar antes del siguiente intento
+        delay(10);  // Esperar antes del siguiente intento
     }
 
     // Solo mostrar error después de todos los intentos fallidos
