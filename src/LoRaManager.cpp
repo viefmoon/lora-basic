@@ -1,6 +1,8 @@
 /*******************************************************************************************
  * Archivo: src/LoRaManager.cpp
  * Descripción: Implementación de la gestión de comunicaciones LoRa y LoRaWAN.
+ *              Se ha modificado la forma de serializar los valores float a 3 decimales
+ *              usando snprintf("%.3f", ...) antes de asignarlos al JSON.
  *******************************************************************************************/
 
 #include "LoRaManager.h"
@@ -15,6 +17,16 @@ SX1262* LoRaManager::radioModule = nullptr;
 extern RTC_DATA_ATTR uint8_t LWsession[RADIOLIB_LORAWAN_SESSION_BUF_SIZE];
 extern RTC_DATA_ATTR uint16_t bootCountSinceUnsuccessfulJoin;
 extern RTCManager rtcManager;
+
+/**
+ * @brief Función auxiliar para formatear valores flotantes a cadenas con 3 decimales.
+ * @param value Valor flotante a formatear.
+ * @param buffer Buffer donde se almacenará la cadena formateada.
+ * @param bufferSize Tamaño del buffer.
+ */
+void LoRaManager::formatFloatTo3Decimals(float value, char* buffer, size_t bufferSize) {
+    snprintf(buffer, bufferSize, "%.3f", value);
+}
 
 int16_t LoRaManager::begin(SX1262* radio, const LoRaWANBand_t* region, uint8_t subBand) {
     radioModule = radio;
@@ -94,14 +106,13 @@ int16_t LoRaManager::lwActivate(LoRaWANNode& node) {
             store.putBytes("nonces", buffer, RADIOLIB_LORAWAN_NONCES_BUF_SIZE);
 
             // Solicitar DeviceTime después de un join exitoso
-            delay(1000); // Pequeña pausa para estabilización
+            delay(1000); // Pausa para estabilización
             node.setDatarate(3);
             
-            // Intentar obtener DeviceTime
             DEBUG_PRINTLN("Solicitando DeviceTime...");
             bool macCommandSuccess = node.sendMacCommandReq(RADIOLIB_LORAWAN_MAC_DEVICE_TIME);
             if (macCommandSuccess) {
-                // Enviar mensaje vacío para recibir el DeviceTime
+                // Enviar mensaje vacío
                 uint8_t fPort = 1;
                 uint8_t downlinkPayload[255];
                 size_t downlinkSize = 0;
@@ -119,7 +130,7 @@ int16_t LoRaManager::lwActivate(LoRaWANNode& node) {
                         DEBUG_PRINTF("Error al obtener DeviceTime: %d\n", dtState);
                     }
                 } else {
-                    DEBUG_PRINTF("Error al recibir respuesta: %d\n", rxState);
+                    DEBUG_PRINTF("Error al recibir respuesta DeviceTime: %d\n", rxState);
                 }
             } else {
                 DEBUG_PRINTLN("Error al solicitar DeviceTime: comando no pudo ser encolado");
@@ -141,72 +152,80 @@ int16_t LoRaManager::lwActivate(LoRaWANNode& node) {
 }
 
 /**
- * @brief Envía el payload de sensores fragmentado. 
- *        Se agregó soporte para subvalores en un solo sensor (por ej. SHT30 con T, H).
+ * @brief Envía el payload de sensores estándar, fragmentando para no exceder el tamaño.  
+ *        **Se añade formateo a 3 decimales con `snprintf("%.3f", ...)`.**
  */
 void LoRaManager::sendFragmentedPayload(const std::vector<SensorReading>& readings, 
                                         LoRaWANNode& node,
                                         const String& deviceId, 
                                         const String& stationId, 
-                                        RTCManager& rtcManager) {
-    const int MAX_PAYLOAD = 200; // Control de tamaño
+                                        RTCManager& rtcManager) 
+{
+    const int MAX_PAYLOAD = 200; // Límite para el tamaño del JSON (aprox)
     size_t sensorIndex = 0;
     int fragmentNumber = 0;
     
     while (sensorIndex < readings.size()) {
-        // Crear un nuevo payload con cabecera
+        // Crear JSON base
         StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> payload;
-        
-        // Configurar precisión a 3 decimales para todos los valores flotantes
         payload.clear();
-        payload["st"] = stationId;
-        payload["d"] = deviceId;
-        payload["vt"] = roundTo3Decimals(SensorManager::readBatteryVoltageADC());
-        payload["ts"] = rtcManager.getEpochTime();
-        JsonArray sensorArray = payload.createNestedArray("s");
         
+        // Volumen de batería con 3 decimales
+        float battery = SensorManager::readBatteryVoltageADC();
+        char batteryStr[16];
+        LoRaManager::formatFloatTo3Decimals(battery, batteryStr, sizeof(batteryStr));
+
+        payload["st"] = stationId;
+        payload["d"]  = deviceId;
+        payload["vt"] = batteryStr;  // Se almacena como string formateado
+        payload["ts"] = rtcManager.getEpochTime();
+
+        JsonArray sensorArray = payload.createNestedArray("s");
         String fragmentStr;
 
-        // Agregar lecturas de sensores mientras no se exceda el tamaño
+        // Agregar lecturas de sensores, controlando que no exceda MAX_PAYLOAD
         while (sensorIndex < readings.size()) {
             JsonObject sensorObj = sensorArray.createNestedObject();
             sensorObj["id"] = readings[sensorIndex].sensorId;
             sensorObj["t"]  = readings[sensorIndex].type;
 
-            // --- Soporte para subvalores:
             if (!readings[sensorIndex].subValues.empty()) {
-                // Si hay subvalores (ej. SHT30 -> T, H)
+                // Procesar subvalores (por ejemplo SHT30 -> T, H)
                 JsonObject multiVals = sensorObj.createNestedObject("v");
                 for (auto &sv : readings[sensorIndex].subValues) {
-                    multiVals[sv.key] = roundTo3Decimals(sv.value);
+                    char valStr[16];
+                    LoRaManager::formatFloatTo3Decimals(sv.value, valStr, sizeof(valStr));
+                    multiVals[sv.key] = valStr;
                 }
             } else {
                 // Sensor con un solo valor
-                sensorObj["v"] = roundTo3Decimals(readings[sensorIndex].value);
+                char valStr[16];
+                LoRaManager::formatFloatTo3Decimals(readings[sensorIndex].value, valStr, sizeof(valStr));
+                sensorObj["v"] = valStr;
             }
 
-            // Serializar para verificar si excede
+            // Revisar si el JSON excede
             fragmentStr.clear();
             serializeJson(payload, fragmentStr);
             if (fragmentStr.length() > MAX_PAYLOAD) {
-                // Retirar la última lectura si excede
+                // Quitar el último sensor si excede
                 sensorArray.remove(sensorArray.size() - 1);
                 break;
             }
             sensorIndex++;
         }
         
-        // Serializar el payload final para este fragmento
+        // Serializar el fragmento
         fragmentStr.clear();
         serializeJson(payload, fragmentStr);
         DEBUG_PRINTF("Enviando fragmento %d con tamaño %d bytes\n", fragmentNumber, fragmentStr.length());
         DEBUG_PRINTLN(fragmentStr);
         
+        // Enviar
         uint8_t payloadBytes[MAX_PAYLOAD];
         size_t payloadLength = fragmentStr.length();
         memcpy(payloadBytes, fragmentStr.c_str(), payloadLength);
-        
-        // Enviar el fragmento
+
         uint8_t fPort = 1;
         int16_t state = node.sendReceive(payloadBytes, payloadLength, fPort);
         if (state == RADIOLIB_ERR_NONE) {
@@ -216,64 +235,67 @@ void LoRaManager::sendFragmentedPayload(const std::vector<SensorReading>& readin
         }
         
         fragmentNumber++;
-        // Dormir brevemente entre fragmentos
-        delay(500);
+        delay(500); // Pequeña pausa entre fragmentos
     }
 }
 
 /**
- * @brief Versión expandida de sendFragmentedPayload que soporta tanto sensores normales como Modbus.
- *        Envía las lecturas en fragmentos, agregando primero las normales y luego las Modbus.
+ * @brief Envía payload de sensores normales y Modbus, también con formateo a 3 decimales.
  */
 void LoRaManager::sendFragmentedPayload(const std::vector<SensorReading>& normalReadings, 
-                                       const std::vector<ModbusSensorReading>& modbusReadings,
-                                       LoRaWANNode& node,
-                                       const String& deviceId, 
-                                       const String& stationId, 
-                                       RTCManager& rtcManager) {
-    const int MAX_PAYLOAD = 200; // Control de tamaño
+                                        const std::vector<ModbusSensorReading>& modbusReadings,
+                                        LoRaWANNode& node,
+                                        const String& deviceId, 
+                                        const String& stationId, 
+                                        RTCManager& rtcManager) 
+{
+    const int MAX_PAYLOAD = 200;
     size_t normalIndex = 0;
     size_t modbusIndex = 0;
     int fragmentNumber = 0;
     bool processedAllNormal = false;
     bool processedAllModbus = false;
     
-    // Procesar mientras haya datos por enviar
     while (!processedAllNormal || !processedAllModbus) {
-        // Crear un nuevo payload con cabecera
+        // Cabecera JSON
         StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> payload;
         payload.clear();
+
+        float battery = SensorManager::readBatteryVoltageADC();
+        char batteryStr[16];
+        LoRaManager::formatFloatTo3Decimals(battery, batteryStr, sizeof(batteryStr));
+
         payload["st"] = stationId;
-        payload["d"] = deviceId;
-        payload["vt"] = roundTo3Decimals(SensorManager::readBatteryVoltageADC());
+        payload["d"]  = deviceId;
+        payload["vt"] = batteryStr;  
         payload["ts"] = rtcManager.getEpochTime();
         JsonArray sensorArray = payload.createNestedArray("s");
-        
+
         String fragmentStr;
 
-        // Primero agregamos lecturas de sensores normales
+        // Agregar lecturas "normales"
         while (!processedAllNormal && normalIndex < normalReadings.size()) {
             JsonObject sensorObj = sensorArray.createNestedObject();
             sensorObj["id"] = normalReadings[normalIndex].sensorId;
             sensorObj["t"]  = normalReadings[normalIndex].type;
 
-            // --- Soporte para subvalores:
             if (!normalReadings[normalIndex].subValues.empty()) {
-                // Si hay subvalores (ej. SHT30 -> T, H)
                 JsonObject multiVals = sensorObj.createNestedObject("v");
                 for (auto &sv : normalReadings[normalIndex].subValues) {
-                    multiVals[sv.key] = roundTo3Decimals(sv.value);
+                    char valStr[16];
+                    LoRaManager::formatFloatTo3Decimals(sv.value, valStr, sizeof(valStr));
+                    multiVals[sv.key] = valStr;
                 }
             } else {
-                // Sensor con un solo valor
-                sensorObj["v"] = roundTo3Decimals(normalReadings[normalIndex].value);
+                char valStr[16];
+                LoRaManager::formatFloatTo3Decimals(normalReadings[normalIndex].value, valStr, sizeof(valStr));
+                sensorObj["v"] = valStr;
             }
 
-            // Serializar para verificar si excede
+            // Checar tamaño
             fragmentStr.clear();
             serializeJson(payload, fragmentStr);
             if (fragmentStr.length() > MAX_PAYLOAD) {
-                // Retirar la última lectura si excede
                 sensorArray.remove(sensorArray.size() - 1);
                 break;
             }
@@ -283,24 +305,25 @@ void LoRaManager::sendFragmentedPayload(const std::vector<SensorReading>& normal
             }
         }
         
-        // Luego agregamos lecturas de sensores Modbus si hay espacio
+        // Agregar lecturas Modbus
         if (!processedAllModbus && modbusIndex < modbusReadings.size()) {
             while (modbusIndex < modbusReadings.size()) {
                 JsonObject sensorObj = sensorArray.createNestedObject();
                 sensorObj["id"] = modbusReadings[modbusIndex].sensorId;
-                sensorObj["t"]  = modbusReadings[modbusIndex].type + 100; // Offset para distinguir tipos Modbus
-                
-                // Los sensores Modbus siempre tienen subvalores
+                // offset 100 para distinguir tipos Modbus
+                sensorObj["t"]  = modbusReadings[modbusIndex].type + 100;
+
                 JsonObject multiVals = sensorObj.createNestedObject("v");
                 for (auto &sv : modbusReadings[modbusIndex].subValues) {
-                    multiVals[sv.key] = roundTo3Decimals(sv.value);
+                    char valStr[16];
+                    LoRaManager::formatFloatTo3Decimals(sv.value, valStr, sizeof(valStr));
+                    multiVals[sv.key] = valStr;
                 }
 
-                // Serializar para verificar si excede
+                // Checar tamaño
                 fragmentStr.clear();
                 serializeJson(payload, fragmentStr);
                 if (fragmentStr.length() > MAX_PAYLOAD) {
-                    // Retirar la última lectura si excede
                     sensorArray.remove(sensorArray.size() - 1);
                     break;
                 }
@@ -311,18 +334,17 @@ void LoRaManager::sendFragmentedPayload(const std::vector<SensorReading>& normal
                 }
             }
         }
-        
-        // Serializar el payload final para este fragmento
+
+        // Serializar
         fragmentStr.clear();
         serializeJson(payload, fragmentStr);
         DEBUG_PRINTF("Enviando fragmento %d con tamaño %d bytes\n", fragmentNumber, fragmentStr.length());
         DEBUG_PRINTLN(fragmentStr);
-        
+
         uint8_t payloadBytes[MAX_PAYLOAD];
         size_t payloadLength = fragmentStr.length();
         memcpy(payloadBytes, fragmentStr.c_str(), payloadLength);
-        
-        // Enviar el fragmento
+
         uint8_t fPort = 1;
         int16_t state = node.sendReceive(payloadBytes, payloadLength, fPort);
         if (state == RADIOLIB_ERR_NONE) {
@@ -330,9 +352,8 @@ void LoRaManager::sendFragmentedPayload(const std::vector<SensorReading>& normal
         } else {
             DEBUG_PRINTF("Error al enviar fragmento: %d\n", state);
         }
-        
+
         fragmentNumber++;
-        // Dormir brevemente entre fragmentos
         delay(500);
     }
 }

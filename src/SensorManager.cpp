@@ -78,13 +78,6 @@ SensorReading SensorManager::getSensorReading(const SensorConfig &cfg) {
 
     readSensorValue(cfg, reading);
 
-    if (!isnan(reading.value)) {
-        reading.value = ::roundTo3Decimals(reading.value);
-    }
-    for (auto &sv : reading.subValues) {
-        sv.value = ::roundTo3Decimals(sv.value);
-    }
-
     return reading;
 }
 
@@ -97,7 +90,7 @@ float SensorManager::readBatteryVoltageADC() {
     }
     float voltage = (reading / 4095.0f) * 3.3f;
     float batteryVoltage = voltage * conversionFactor;
-    return ::roundTo3Decimals(batteryVoltage);
+    return batteryVoltage; 
 #elif defined(DEVICE_TYPE_BASIC) || defined(DEVICE_TYPE_MODBUS)
     analogReadResolution(12);
     int reading = analogRead(BATTERY_PIN);
@@ -106,7 +99,7 @@ float SensorManager::readBatteryVoltageADC() {
     }
     float voltage = (reading / 4095.0f) * 3.3f;
     float batteryVoltage = voltage * conversionFactor;
-    return ::roundTo3Decimals(batteryVoltage);
+    return batteryVoltage; 
 #endif
 }
 

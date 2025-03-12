@@ -106,7 +106,7 @@ ModbusSensorReading ModbusSensorManager::readEnvSensor(const ModbusSensorConfig 
     {
         SubValue sH;
         strncpy(sH.key, keys[0], sizeof(sH.key)); 
-        sH.value = roundTo3Decimals(rawData[0] / 10.0f);
+        sH.value = rawData[0] / 10.0f;
         reading.subValues.push_back(sH);
     }
     // Temperatura
@@ -115,14 +115,14 @@ ModbusSensorReading ModbusSensorManager::readEnvSensor(const ModbusSensorConfig 
         strncpy(sT.key, keys[1], sizeof(sT.key));
         // Ver si es negativo
         int16_t temp16 = (int16_t)rawData[1];
-        sT.value = roundTo3Decimals(temp16 / 10.0f);
+        sT.value = temp16 / 10.0f;
         reading.subValues.push_back(sT);
     }
     // Presion
     {
         SubValue sP;
         strncpy(sP.key, keys[2], sizeof(sP.key));
-        sP.value = roundTo3Decimals(rawData[5] / 10.0f);  // kPa
+        sP.value = rawData[5] / 10.0f;  // kPa
         reading.subValues.push_back(sP);
     }
     // Lux
@@ -132,7 +132,7 @@ ModbusSensorReading ModbusSensorManager::readEnvSensor(const ModbusSensorConfig 
         uint32_t fullLux = (luxHigh << 16) | luxLow; 
         SubValue sL;
         strncpy(sL.key, keys[3], sizeof(sL.key));
-        sL.value = roundTo3Decimals((float)fullLux);
+        sL.value = (float)fullLux;
         reading.subValues.push_back(sL);
     }
 
