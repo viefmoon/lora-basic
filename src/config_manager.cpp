@@ -333,7 +333,7 @@ std::vector<ModbusSensorConfig> ConfigManager::getAllModbusSensorConfigs() {
         for (JsonObject sensorObj : array) {
             ModbusSensorConfig config;
             strlcpy(config.sensorId, sensorObj[KEY_MODBUS_SENSOR_ID] | "", sizeof(config.sensorId));
-            config.type = static_cast<ModbusSensorType>(sensorObj[KEY_MODBUS_SENSOR_TYPE] | 0);
+            config.type = static_cast<SensorType>(sensorObj[KEY_MODBUS_SENSOR_TYPE] | 0);
             config.address = sensorObj[KEY_MODBUS_SENSOR_ADDR] | 1;
             config.enable = sensorObj[KEY_MODBUS_SENSOR_ENABLE] | false;
             

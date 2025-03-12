@@ -19,9 +19,10 @@ struct SubValue {
  ************************************************************************/
 
 /**
- * @brief Enumeración de tipos de sensores disponibles (no-Modbus).
+ * @brief Enumeración de tipos de sensores disponibles.
  */
 enum SensorType {
+    // Sensores estándar (no-Modbus)
     N100K,    // NTC 100K
     N10K,     // NTC 10K
     WNTC10K,  // Water NTC 10K
@@ -31,7 +32,11 @@ enum SensorType {
     COND,     // Conductividad
     CONDH,    // Condensation Humidity
     SOILH,    // Soil Humidity
-    SHT30     // Nuevo tipo unificado para SHT30
+    SHT30,    // SHT30
+    
+    // Sensores Modbus
+    ENV4      // Sensor ambiental 4 en 1 (Modbus)
+    // Aquí se pueden agregar más tipos de sensores Modbus
 };
 
 /**
@@ -40,7 +45,7 @@ enum SensorType {
  */
 struct SensorReading {
     char sensorId[20];         // Identificador del sensor (ej. "SHT30_1")
-    SensorType type;           // Tipo de sensor (no-Modbus)
+    SensorType type;           // Tipo de sensor
     float value;               // Valor único (si aplica)
     std::vector<SubValue> subValues; // Subvalores, si el sensor genera varias mediciones
 };
@@ -62,19 +67,11 @@ struct SensorConfig {
  ************************************************************************/
 
 /**
- * @brief Enumeración de tipos de sensores Modbus.
- */
-enum ModbusSensorType {
-    ENV4 = 0,   // Sensor ambiental 4 en 1
-    // Aquí se pueden agregar más tipos de sensores Modbus
-};
-
-/**
  * @brief Estructura de configuración para sensores Modbus.
  */
 struct ModbusSensorConfig {
     char sensorId[20];         // Identificador del sensor
-    ModbusSensorType type;     // Tipo de sensor Modbus
+    SensorType type;           // Tipo de sensor Modbus
     uint8_t address;           // Dirección Modbus del dispositivo
     bool enable;               // Si está habilitado o no
 };
@@ -84,7 +81,7 @@ struct ModbusSensorConfig {
  */
 struct ModbusSensorReading {
     char sensorId[20];         // Identificador del sensor
-    ModbusSensorType type;     // Tipo de sensor Modbus
+    SensorType type;           // Tipo de sensor Modbus
     std::vector<SubValue> subValues; // Subvalores reportados por el sensor
 };
 
