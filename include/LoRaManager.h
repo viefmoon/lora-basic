@@ -126,13 +126,6 @@ private:
     static LoRaWANNode* node;
     static SX1262* radioModule;
 
-    /**
-     * @brief Función auxiliar para formatear valores flotantes a cadenas con 3 decimales.
-     * @param value Valor flotante a formatear.
-     * @param buffer Buffer donde se almacenará la cadena formateada.
-     * @param bufferSize Tamaño del buffer.
-     */
-    static void formatFloatTo3Decimals(float value, char* buffer, size_t bufferSize);
 };
 
 #endif // LORA_MANAGER_H

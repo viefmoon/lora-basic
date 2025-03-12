@@ -46,7 +46,7 @@
 #define DEFAULT_TIME_TO_SLEEP   30
 
 // Identificadores
-#define DEFAULT_DEVICE_ID   "DEV001"
+#define DEFAULT_DEVICE_ID   "DEV01"
 #define DEFAULT_STATION_ID  "ST001"
 
 // LoRa (OTAA)
@@ -86,7 +86,6 @@ const double conversionFactor = (R1 + R2) / R1;
 #define KEY_SENSOR_ID_TEMPERATURE_SENSOR "ts"
 #define KEY_SENSOR_TYPE         "t"
 #define KEY_SENSOR_CHANNEL      "ch"
-#define KEY_SENSOR_VALUE        "v"
 #define KEY_SENSOR_ENABLE       "e"
 #define KEY_LORA_JOIN_EUI       "joinEUI"
 #define KEY_LORA_DEV_EUI        "devEUI"
@@ -153,7 +152,7 @@ const double conversionFactor = (R1 + R2) / R1;
 #define DEFAULT_TIME_TO_SLEEP   30
 
 // Identificadores
-#define DEFAULT_DEVICE_ID   "DEV001"
+#define DEFAULT_DEVICE_ID   "DEV01"
 #define DEFAULT_STATION_ID  "ST001"
 
 // LoRa (OTAA)
@@ -170,6 +169,11 @@ const double conversionFactor = (R1 + R2) / R1;
 #define BLE_CHAR_SYSTEM_UUID         "2A37"
 #define BLE_CHAR_SENSORS_UUID        "2A40"
 #define BLE_CHAR_LORA_CONFIG_UUID    "2A41"
+#define BLE_CHAR_NTC100K_UUID        "2A38"
+#define BLE_CHAR_NTC10K_UUID         "2A39"
+#define BLE_CHAR_CONDUCTIVITY_UUID   "2A3C"
+#define BLE_CHAR_PH_UUID             "2A3B"
+#define BLE_DEVICE_PREFIX            "AGRICOS_"
 
 // Calibración batería
 const double R1 = 470000.0;
@@ -194,7 +198,6 @@ const double conversionFactor = (R1 + R2) / R1;
 #define KEY_SENSOR_ID_TEMPERATURE_SENSOR "ts"
 #define KEY_SENSOR_TYPE         "t"
 #define KEY_SENSOR_CHANNEL      "ch"
-#define KEY_SENSOR_VALUE        "v"
 #define KEY_SENSOR_ENABLE       "e"
 #define KEY_LORA_JOIN_EUI       "joinEUI"
 #define KEY_LORA_DEV_EUI        "devEUI"
@@ -205,7 +208,7 @@ const double conversionFactor = (R1 + R2) / R1;
 // Claves para Modbus
 #define KEY_MODBUS_SENSOR_ID    "id"
 #define KEY_MODBUS_SENSOR_TYPE  "t"
-#define KEY_MODBUS_SENSOR_ADDR  "ad"
+#define KEY_MODBUS_SENSOR_ADDR  "a"
 #define KEY_MODBUS_SENSOR_ENABLE "e"
 
 // Configuración Modbus
@@ -235,12 +238,6 @@ const double conversionFactor = (R1 + R2) / R1;
 
 // FlowSensor
 #define FLOW_SENSOR_PIN 14
-
-// BLE
-#define BLE_CHAR_NTC100K_UUID        "2A38"
-#define BLE_CHAR_NTC10K_UUID         "2A39"
-#define BLE_CHAR_CONDUCTIVITY_UUID   "2A3C"
-#define BLE_CHAR_PH_UUID             "2A3B"
 
 // Namespaces analógicos
 #define NAMESPACE_NTC100K   "ntc_100k"
@@ -382,7 +379,7 @@ const double conversionFactor = (R1 + R2) / R1;
 #define DEFAULT_TIME_TO_SLEEP   30
 
 // Identificadores
-#define DEFAULT_DEVICE_ID   "DEV001"
+#define DEFAULT_DEVICE_ID   "DEV01"
 #define DEFAULT_STATION_ID  "ST001"
 
 // LoRa (OTAA)
@@ -399,6 +396,7 @@ const double conversionFactor = (R1 + R2) / R1;
 #define BLE_CHAR_SYSTEM_UUID         "2A37"
 #define BLE_CHAR_SENSORS_UUID        "2A40"
 #define BLE_CHAR_LORA_CONFIG_UUID    "2A41"
+#define BLE_DEVICE_PREFIX            "AGRICOS_"
 
 // Calibración batería
 const double R1 = 470000.0;
@@ -423,7 +421,6 @@ const double conversionFactor = (R1 + R2) / R1;
 #define KEY_SENSOR_ID_TEMPERATURE_SENSOR "ts"
 #define KEY_SENSOR_TYPE                  "t"
 #define KEY_SENSOR_CHANNEL               "ch"
-#define KEY_SENSOR_VALUE                 "v"
 #define KEY_SENSOR_ENABLE                "e"
 #define KEY_LORA_JOIN_EUI                "joinEUI"
 #define KEY_LORA_DEV_EUI                 "devEUI"
@@ -434,13 +431,13 @@ const double conversionFactor = (R1 + R2) / R1;
 // Claves para Modbus
 #define KEY_MODBUS_SENSOR_ID    "id"
 #define KEY_MODBUS_SENSOR_TYPE  "t"
-#define KEY_MODBUS_SENSOR_ADDR  "ad"
+#define KEY_MODBUS_SENSOR_ADDR  "a"
 #define KEY_MODBUS_SENSOR_ENABLE "e"
 
 // Configuración Modbus
 #define MODBUS_BAUDRATE         9600
 #define MODBUS_SERIAL_CONFIG    SERIAL_8N1
-#define MODBUS_RESPONSE_TIMEOUT 1000  // Tiempo de espera para respuesta en ms
+#define MODBUS_RESPONSE_TIMEOUT 300  // Tiempo de espera para respuesta en ms
 #define MODBUS_MAX_RETRY        3     // Número máximo de intentos de lectura Modbus
 
 // Tamaños JSON

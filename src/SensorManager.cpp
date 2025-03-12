@@ -11,7 +11,7 @@
 #include "config_manager.h"
 #include "Debug.h"
 #include "sensor_constants.h"  // Para tiempos de estabilización
-#include "utilities.h"  // Para roundTo3Decimals
+#include "utilities.h"
 
 void SensorManager::beginSensors() {
     // Inicializar pines de SPI (SS) y luego SPI
@@ -135,10 +135,6 @@ void SensorManager::readSht30(float &outTemp, float &outHum) {
     }
     outTemp = temperature;
     outHum = humidity;
-}
-
-float SensorManager::roundTo3Decimals(float value) {
-    return ::roundTo3Decimals(value);  // Usa la función global
 }
 
 float SensorManager::readSensorValue(const SensorConfig &cfg, SensorReading &reading) {

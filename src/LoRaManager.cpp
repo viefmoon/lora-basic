@@ -10,6 +10,7 @@
 #include "debug.h"
 #include <RadioLib.h>
 #include <RTClib.h>
+#include "utilities.h"  // Incluido para acceder a formatFloatTo3Decimals
 
 // Inicialización de variables estáticas
 LoRaWANNode* LoRaManager::node = nullptr;
@@ -19,34 +20,6 @@ SX1262* LoRaManager::radioModule = nullptr;
 extern RTC_DATA_ATTR uint8_t LWsession[RADIOLIB_LORAWAN_SESSION_BUF_SIZE];
 extern RTC_DATA_ATTR uint16_t bootCountSinceUnsuccessfulJoin;
 extern RTC_DS3231 rtc;
-
-/**
- * @brief Función auxiliar para formatear valores flotantes con hasta 3 decimales.
- * @param value Valor flotante a formatear.
- * @param buffer Buffer donde se almacenará la cadena formateada.
- * @param bufferSize Tamaño del buffer.
- */
-void LoRaManager::formatFloatTo3Decimals(float value, char* buffer, size_t bufferSize) {
-    // Primero formateamos con 3 decimales
-    snprintf(buffer, bufferSize, "%.3f", value);
-    
-    // Luego eliminamos los ceros a la derecha y el punto si no hay decimales
-    int len = strlen(buffer);
-    int i = len - 1;
-    
-    // Retroceder mientras haya ceros al final
-    while (i >= 0 && buffer[i] == '0') {
-        i--;
-    }
-    
-    // Si el último carácter es un punto, también lo eliminamos
-    if (i >= 0 && buffer[i] == '.') {
-        buffer[i] = '\0';
-    } else {
-        // Si no, terminamos la cadena después del último dígito no cero
-        buffer[i + 1] = '\0';
-    }
-}
 
 int16_t LoRaManager::begin(SX1262* radio, const LoRaWANBand_t* region, uint8_t subBand) {
     radioModule = radio;

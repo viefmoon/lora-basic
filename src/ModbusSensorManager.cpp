@@ -4,7 +4,7 @@
 #include "debug.h"     // Para DEBUG_END
 #include "sensor_types.h" // Para ENV4Keys
 #include "sensor_constants.h" // Para SensorKeys
-#include "utilities.h" // Para roundTo3Decimals
+#include "utilities.h"
 #include <string.h>
 
 // Crear una instancia global de ModbusMaster
@@ -39,6 +39,9 @@ bool ModbusSensorManager::readHoldingRegisters(uint8_t address, uint16_t startRe
     
     // Implementar reintentos de lectura
     for (uint8_t retry = 0; retry < MODBUS_MAX_RETRY; retry++) {
+        // Registrar el tiempo de inicio para implementar timeout manual
+        uint32_t startTime = millis();
+        
         // Realizar la petición Modbus para leer registros holding
         result = modbus.readHoldingRegisters(startReg, numRegs);
         
@@ -52,8 +55,13 @@ bool ModbusSensorManager::readHoldingRegisters(uint8_t address, uint16_t startRe
             return true;
         }
         
+        // Verificar si se agotó el tiempo (timeout personalizado)
+        if ((millis() - startTime) >= MODBUS_RESPONSE_TIMEOUT) {
+            DEBUG_PRINTLN("Timeout en comunicación Modbus");
+            break; // Salir del bucle de reintentos si se agota el tiempo
+        }
+        
         // Si no es el último intento, continuar con el siguiente intento
-        // No hay delay entre intentos ya que el timeout ya se aplicó en la función readHoldingRegisters
         DEBUG_PRINTF("Intento %d fallido, código: %d\n", retry + 1, result);
     }
     

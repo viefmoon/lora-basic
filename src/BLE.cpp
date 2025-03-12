@@ -24,7 +24,7 @@ bool BLEHandler::checkConfigMode(PCA9555& ioExpander) {
             if (millis() - startTime >= CONFIG_TRIGGER_TIME) {
                 // Obtener configuración LoRa para el nombre BLE
                 LoRaConfig loraConfig = ConfigManager::getLoRaConfig();
-                String bleName = "SENSOR_DEV" + String(loraConfig.devEUI);
+                String bleName = BLE_DEVICE_PREFIX + String(loraConfig.devEUI);
                 
                 // Inicializar BLE
                 BLEDevice::init(bleName.c_str());
@@ -52,7 +52,7 @@ bool BLEHandler::checkConfigMode(PCA9555& ioExpander) {
 }
 
 BLEServer* BLEHandler::initBLE(const String& devEUI) {
-    String bleName = "SENSOR_DEV" + devEUI;
+    String bleName = BLE_DEVICE_PREFIX + devEUI;
     BLEDevice::init(bleName.c_str());
     BLEServer* pServer = BLEDevice::createServer();
     pServer->setCallbacks(new ServerCallbacks());

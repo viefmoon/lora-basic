@@ -51,10 +51,29 @@ bool parseEUIString(const char* euiStr, uint64_t* eui) {
 } 
 
 /**
- * @brief Redondea un valor flotante a un máximo de 3 decimales.
- * @param value Valor a redondear.
- * @return Valor redondeado a 3 decimales.
+ * @brief Formatea un valor flotante con hasta 3 decimales, eliminando ceros finales.
+ * @param value Valor flotante a formatear.
+ * @param buffer Buffer donde se almacenará la cadena formateada.
+ * @param bufferSize Tamaño del buffer.
  */
-float roundTo3Decimals(float value) {
-    return roundf(value * 1000.0f) / 1000.0f;
+void formatFloatTo3Decimals(float value, char* buffer, size_t bufferSize) {
+    // Primero formateamos con 3 decimales
+    snprintf(buffer, bufferSize, "%.3f", value);
+    
+    // Luego eliminamos los ceros a la derecha y el punto si no hay decimales
+    int len = strlen(buffer);
+    int i = len - 1;
+    
+    // Retroceder mientras haya ceros al final
+    while (i >= 0 && buffer[i] == '0') {
+        i--;
+    }
+    
+    // Si el último carácter es un punto, también lo eliminamos
+    if (i >= 0 && buffer[i] == '.') {
+        buffer[i] = '\0';
+    } else {
+        // Si no, terminamos la cadena después del último dígito no cero
+        buffer[i + 1] = '\0';
+    }
 }

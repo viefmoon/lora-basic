@@ -62,9 +62,6 @@ class SensorManager {
     // Lectura unificada de SHT30
     static void readSht30(float& outTemp, float& outHum);
 
-    // Redondea un valor flotante a un máximo de 3 decimales.
-    static float roundTo3Decimals(float value);
-
     static void initializeSPISSPins();
     static float readSensorValue(const SensorConfig &cfg, SensorReading &reading);
 };
