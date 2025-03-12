@@ -19,6 +19,12 @@ public:
     static void beginModbus();
 
     /**
+     * @brief Finaliza la comunicación Modbus (cierra Serial)
+     *        Debe llamarse después de completar todas las lecturas Modbus
+     */
+    static void endModbus();
+
+    /**
      * @brief Lee un sensor Modbus de tipo ENV_SENSOR (ejemplo del datasheet).
      *        Regresa la lectura con subvalores (T, H, Ruido, PM2.5, PM10, Presión, Iluminación).
      * @param cfg Configuración del sensor (dirección, etc.)

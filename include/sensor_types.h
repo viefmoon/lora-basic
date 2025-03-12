@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <vector>
+#include "sensor_constants.h"
 
 /**
  * @brief Estructura para variables múltiples en un solo sensor.
@@ -12,6 +13,10 @@ struct SubValue {
     char key[10];    // Nombre corto de la variable, por ej: "T", "H", etc.
     float value;
 };
+
+/************************************************************************
+ * SECCIÓN PARA SENSORES ESTÁNDAR (NO MODBUS)
+ ************************************************************************/
 
 /**
  * @brief Enumeración de tipos de sensores disponibles (no-Modbus).
@@ -52,42 +57,35 @@ struct SensorConfig {
     bool enable;
 };
 
-/* =========================================================================
-   NUEVA SECCIÓN PARA SENSORES MODBUS
-   ========================================================================= */
+/************************************************************************
+ * SECCIÓN PARA SENSORES MODBUS
+ ************************************************************************/
 
 /**
- * @brief Enumeración de tipos de sensores Modbus (si deseas varios tipos).
- *        Aquí solo se define un caso de ejemplo "ENV_SENSOR".
+ * @brief Enumeración de tipos de sensores Modbus.
  */
 enum ModbusSensorType {
-    ENV_SENSOR = 0,   // Sensor ambiental del datasheet (T, H, ruido, PM2.5, etc.)
-    // Agrega más tipos Modbus si lo requieres...
+    ENV4 = 0,   // Sensor ambiental 4 en 1
+    // Aquí se pueden agregar más tipos de sensores Modbus
 };
 
 /**
  * @brief Estructura de configuración para sensores Modbus.
- *        - id: nombre identificador
- *        - type: tipo de sensor (ENV_SENSOR, etc.)
- *        - address: dirección Modbus (por defecto 1)
- *        - enable: si está activo o no
  */
 struct ModbusSensorConfig {
-    char sensorId[20];
-    ModbusSensorType type;
-    uint8_t address;
-    bool enable;
+    char sensorId[20];         // Identificador del sensor
+    ModbusSensorType type;     // Tipo de sensor Modbus
+    uint8_t address;           // Dirección Modbus del dispositivo
+    bool enable;               // Si está habilitado o no
 };
 
 /**
  * @brief Estructura para almacenar la lectura completa de un sensor Modbus.
- *        Al ser un sensor que reporta varias variables (T, H, ruido, PM, presión, etc.),
- *        se maneja un vector de SubValue similar a la estructura general.
  */
 struct ModbusSensorReading {
-    char sensorId[20];         
-    ModbusSensorType type;     
-    std::vector<SubValue> subValues; 
+    char sensorId[20];         // Identificador del sensor
+    ModbusSensorType type;     // Tipo de sensor Modbus
+    std::vector<SubValue> subValues; // Subvalores reportados por el sensor
 };
 
 #endif // SENSOR_TYPES_H

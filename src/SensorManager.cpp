@@ -10,6 +10,9 @@
 #include "config.h"
 #include <Preferences.h>
 #include "config_manager.h"
+#include "Debug.h"
+#include "sensor_constants.h"  // Para tiempos de estabilización
+#include "utilities.h"  // Para roundTo3Decimals
 
 void SensorManager::beginSensors() {
     // Inicializar pines de SPI (SS) y luego SPI
@@ -76,10 +79,10 @@ SensorReading SensorManager::getSensorReading(const SensorConfig &cfg) {
     readSensorValue(cfg, reading);
 
     if (!isnan(reading.value)) {
-        reading.value = roundTo3Decimals(reading.value);
+        reading.value = ::roundTo3Decimals(reading.value);
     }
     for (auto &sv : reading.subValues) {
-        sv.value = roundTo3Decimals(sv.value);
+        sv.value = ::roundTo3Decimals(sv.value);
     }
 
     return reading;
@@ -89,15 +92,21 @@ float SensorManager::readBatteryVoltageADC() {
 #if defined(DEVICE_TYPE_ANALOGIC)
     analogReadResolution(12);
     int reading = analogRead(BATTERY_ADC_PIN);
+    if (reading < 0) {
+        return NAN;
+    }
     float voltage = (reading / 4095.0f) * 3.3f;
     float batteryVoltage = voltage * conversionFactor;
-    return roundTo3Decimals(batteryVoltage);
+    return ::roundTo3Decimals(batteryVoltage);
 #elif defined(DEVICE_TYPE_BASIC) || defined(DEVICE_TYPE_MODBUS)
     analogReadResolution(12);
     int reading = analogRead(BATTERY_PIN);
+    if (reading < 0) {
+        return NAN;
+    }
     float voltage = (reading / 4095.0f) * 3.3f;
     float batteryVoltage = voltage * conversionFactor;
-    return roundTo3Decimals(batteryVoltage);
+    return ::roundTo3Decimals(batteryVoltage);
 #endif
 }
 
@@ -137,7 +146,7 @@ void SensorManager::readSht30(float &outTemp, float &outHum) {
 }
 
 float SensorManager::roundTo3Decimals(float value) {
-    return roundf(value * 1000.0f) / 1000.0f;
+    return ::roundTo3Decimals(value);  // Usa la función global
 }
 
 float SensorManager::readSensorValue(const SensorConfig &cfg, SensorReading &reading) {
@@ -149,8 +158,8 @@ float SensorManager::readSensorValue(const SensorConfig &cfg, SensorReading &rea
         case COND:
         case SOILH:
         case CONDH:
-            // No implementado en este ejemplo
-            reading.value = 0.0f; 
+            // No implementado pero debe devolver NAN, no cero
+            reading.value = NAN; 
             break;
 
         case RTD:
@@ -175,11 +184,13 @@ float SensorManager::readSensorValue(const SensorConfig &cfg, SensorReading &rea
                 SubValue sH; strncpy(sH.key, "H", sizeof(sH.key)); sH.value = hum;
                 reading.subValues.push_back(sH);
             }
+            // Asignar el valor principal como NAN si alguno de los valores del sensor falló
+            reading.value = (isnan(tmp) || isnan(hum)) ? NAN : tmp;
             break;
         }
 
         default:
-            reading.value = 0.0f;
+            reading.value = NAN;
             break;
     }
     return reading.value;
@@ -191,40 +202,17 @@ ModbusSensorReading SensorManager::getModbusSensorReading(const ModbusSensorConf
     // Copiar el ID del sensor
     strlcpy(reading.sensorId, cfg.sensorId, sizeof(reading.sensorId));
     reading.type = cfg.type;
-    #if defined(DEVICE_TYPE_MODBUS) || defined(DEVICE_TYPE_ANALOGIC)
-        powerManager.power12VOn();
-        delay(5000);
-    #endif
-    
-    // Inicializar ModBus para la comunicación
-    //ModbusSensorManager::beginModbus();
     
     // Leer sensor según su tipo
     switch (cfg.type) {
-        case ENV_SENSOR:
+        case ENV4:
             reading = ModbusSensorManager::readEnvSensor(cfg);
             break;
         // Añadir casos para otros tipos de sensores Modbus
         default:
-            Serial.println("Tipo de sensor Modbus no soportado");
+            DEBUG_PRINTLN("Tipo de sensor Modbus no soportado");
             break;
     }
-    
-    // Apagar alimentación 12V después de la lectura
-#if defined(DEVICE_TYPE_MODBUS) || defined(DEVICE_TYPE_ANALOGIC)
-    powerManager.power12VOff();
-#endif
-    
-    // // Imprimir resultados
-    // Serial.println("Resultados de la lectura:");
-    // for (const auto& sv : reading.subValues) {
-    //     if (isnan(sv.value)) {
-    //         Serial.printf("  %s: NAN (sin lectura)\n", sv.key);
-    //     } else {
-    //         Serial.printf("  %s: %.2f\n", sv.key, sv.value);
-    //     }
-    // }
-    // Serial.println("=== Fin de lectura de sensor Modbus ===");
     
     return reading;
 }
@@ -244,10 +232,53 @@ void SensorManager::getAllSensorReadings(std::vector<SensorReading>& normalReadi
         normalReadings.push_back(getSensorReading(sensor));
     }
     
-    // Si hay sensores Modbus, leerlos
+    // Si hay sensores Modbus, inicializar comunicación, leerlos y finalizar
     if (!enabledModbusSensors.empty()) {
+        // Determinar el tiempo máximo de estabilización necesario
+        uint32_t maxStabilizationTime = 0;
+        
+        // Revisar cada sensor habilitado para encontrar el tiempo máximo
+        for (const auto &sensor : enabledModbusSensors) {
+            uint32_t sensorStabilizationTime = 0;
+            
+            // Obtener el tiempo de estabilización según el tipo de sensor
+            switch (sensor.type) {
+                case ENV4:
+                    sensorStabilizationTime = SENSOR_MODBUS_ENV4_STABILIZATION_TIME;
+                    break;
+                // Añadir casos para otros tipos de sensores Modbus con sus respectivos tiempos
+                default:
+                    sensorStabilizationTime = 1000; // Tiempo predeterminado si no se especifica
+                    break;
+            }
+            
+            // Actualizar el tiempo máximo si este sensor necesita más tiempo
+            if (sensorStabilizationTime > maxStabilizationTime) {
+                maxStabilizationTime = sensorStabilizationTime;
+            }
+        }
+        
+        // Encender alimentación de 12V para sensores Modbus
+        #if defined(DEVICE_TYPE_MODBUS) || defined(DEVICE_TYPE_ANALOGIC)
+            powerManager.power12VOn();
+            DEBUG_PRINTF("Esperando %u ms para estabilización de sensores Modbus\n", maxStabilizationTime);
+            delay(maxStabilizationTime);
+        #endif
+        
+        // Inicializar comunicación Modbus antes de comenzar las mediciones
+        ModbusSensorManager::beginModbus();
+        
+        // Leer todos los sensores Modbus
         for (const auto &sensor : enabledModbusSensors) {
             modbusReadings.push_back(getModbusSensorReading(sensor));
         }
+        
+        // Finalizar comunicación Modbus después de completar todas las lecturas
+        ModbusSensorManager::endModbus();
+        
+        // Apagar alimentación de 12V después de completar las lecturas
+        #if defined(DEVICE_TYPE_MODBUS) || defined(DEVICE_TYPE_ANALOGIC)
+            powerManager.power12VOff();
+        #endif
     }
 }

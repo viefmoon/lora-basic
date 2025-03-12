@@ -49,3 +49,12 @@ bool parseEUIString(const char* euiStr, uint64_t* eui) {
     
     return true;
 } 
+
+/**
+ * @brief Redondea un valor flotante a un máximo de 3 decimales.
+ * @param value Valor a redondear.
+ * @return Valor redondeado a 3 decimales.
+ */
+float roundTo3Decimals(float value) {
+    return roundf(value * 1000.0f) / 1000.0f;
+}

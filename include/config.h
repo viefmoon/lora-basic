@@ -212,8 +212,7 @@ const double conversionFactor = (R1 + R2) / R1;
 #define MODBUS_BAUDRATE         9600
 #define MODBUS_SERIAL_CONFIG    SERIAL_8N1
 #define MODBUS_RESPONSE_TIMEOUT 1000  // Tiempo de espera para respuesta en ms
-#define MODBUS_INTER_FRAME_DELAY 20   // Tiempo entre tramas en ms
-#define MODBUS_MAX_REGISTERS    20    // Número máximo de registros en una lectura
+
 
 // Tamaños de documentos JSON - Centralizados
 #define JSON_DOC_SIZE_SMALL   300
@@ -442,8 +441,7 @@ const double conversionFactor = (R1 + R2) / R1;
 #define MODBUS_BAUDRATE         9600
 #define MODBUS_SERIAL_CONFIG    SERIAL_8N1
 #define MODBUS_RESPONSE_TIMEOUT 1000  // Tiempo de espera para respuesta en ms
-#define MODBUS_INTER_FRAME_DELAY 20   // Tiempo entre tramas en ms
-#define MODBUS_MAX_REGISTERS    20    // Número máximo de registros en una lectura
+#define MODBUS_MAX_RETRY        3     // Número máximo de intentos de lectura Modbus
 
 // Tamaños JSON
 #define JSON_DOC_SIZE_SMALL   300
@@ -463,7 +461,7 @@ const double conversionFactor = (R1 + R2) / R1;
 }
 
 #define DEFAULT_MODBUS_SENSOR_CONFIGS { \
-    {"Env1", ENV_SENSOR, 1, true} \
+    {"Env1", ENV4, 1, true} \
 }
 
 #endif

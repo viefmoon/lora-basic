@@ -156,9 +156,12 @@ void LoRaManager::sendFragmentedPayload(const std::vector<SensorReading>& readin
     while (sensorIndex < readings.size()) {
         // Crear un nuevo payload con cabecera
         StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> payload;
+        
+        // Configurar precisión a 3 decimales para todos los valores flotantes
+        payload.clear();
         payload["st"] = stationId;
         payload["d"] = deviceId;
-        payload["vt"] = SensorManager::readBatteryVoltageADC();
+        payload["vt"] = roundTo3Decimals(SensorManager::readBatteryVoltageADC());
         payload["ts"] = rtcManager.getEpochTime();
         JsonArray sensorArray = payload.createNestedArray("s");
         
@@ -175,11 +178,11 @@ void LoRaManager::sendFragmentedPayload(const std::vector<SensorReading>& readin
                 // Si hay subvalores (ej. SHT30 -> T, H)
                 JsonObject multiVals = sensorObj.createNestedObject("v");
                 for (auto &sv : readings[sensorIndex].subValues) {
-                    multiVals[sv.key] = sv.value;
+                    multiVals[sv.key] = roundTo3Decimals(sv.value);
                 }
             } else {
                 // Sensor con un solo valor
-                sensorObj["v"] = readings[sensorIndex].value;
+                sensorObj["v"] = roundTo3Decimals(readings[sensorIndex].value);
             }
 
             // Serializar para verificar si excede
@@ -239,9 +242,10 @@ void LoRaManager::sendFragmentedPayload(const std::vector<SensorReading>& normal
     while (!processedAllNormal || !processedAllModbus) {
         // Crear un nuevo payload con cabecera
         StaticJsonDocument<JSON_DOC_SIZE_MEDIUM> payload;
+        payload.clear();
         payload["st"] = stationId;
         payload["d"] = deviceId;
-        payload["vt"] = SensorManager::readBatteryVoltageADC();
+        payload["vt"] = roundTo3Decimals(SensorManager::readBatteryVoltageADC());
         payload["ts"] = rtcManager.getEpochTime();
         JsonArray sensorArray = payload.createNestedArray("s");
         
@@ -258,11 +262,11 @@ void LoRaManager::sendFragmentedPayload(const std::vector<SensorReading>& normal
                 // Si hay subvalores (ej. SHT30 -> T, H)
                 JsonObject multiVals = sensorObj.createNestedObject("v");
                 for (auto &sv : normalReadings[normalIndex].subValues) {
-                    multiVals[sv.key] = sv.value;
+                    multiVals[sv.key] = roundTo3Decimals(sv.value);
                 }
             } else {
                 // Sensor con un solo valor
-                sensorObj["v"] = normalReadings[normalIndex].value;
+                sensorObj["v"] = roundTo3Decimals(normalReadings[normalIndex].value);
             }
 
             // Serializar para verificar si excede
@@ -289,7 +293,7 @@ void LoRaManager::sendFragmentedPayload(const std::vector<SensorReading>& normal
                 // Los sensores Modbus siempre tienen subvalores
                 JsonObject multiVals = sensorObj.createNestedObject("v");
                 for (auto &sv : modbusReadings[modbusIndex].subValues) {
-                    multiVals[sv.key] = sv.value;
+                    multiVals[sv.key] = roundTo3Decimals(sv.value);
                 }
 
                 // Serializar para verificar si excede

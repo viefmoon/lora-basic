@@ -132,6 +132,11 @@ uint8_t MAX31865_RTD::read_all()
 // -----------------------------------------------------------------------
 double MAX31865_RTD::temperature() const
 {
+  // Si hay error o resistencia inválida, retornar NAN
+  if (measured_status != 0 || measured_resistance == 0) {
+    return NAN;
+  }
+
   // Callendar-Van Dusen
   static const double a2 = 2.0 * RTD_B;
   static const double b_sq = (RTD_A * RTD_A);
@@ -139,6 +144,12 @@ double MAX31865_RTD::temperature() const
 
   double c = 1.0 - (resistance() / rtd_resistance);
   double D = b_sq - 2.0 * a2 * c;
+  
+  // Verificar si la ecuación cuadrática tiene solución real
+  if (D < 0) {
+    return NAN;
+  }
+  
   double tempC = (-RTD_A + sqrt(D)) / a2;
 
   return tempC;
