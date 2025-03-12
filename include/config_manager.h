@@ -36,12 +36,14 @@ public:
     static std::vector<SensorConfig> getAllSensorConfigs();
     static std::vector<SensorConfig> getEnabledSensorConfigs();
 
+#if defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
     /* =========================================================================
        CONFIGURACIÓN DE SENSORES MODBUS
        ========================================================================= */
     static void setModbusSensorsConfigs(const std::vector<ModbusSensorConfig>& configs);
     static std::vector<ModbusSensorConfig> getAllModbusSensorConfigs();
     static std::vector<ModbusSensorConfig> getEnabledModbusSensorConfigs();
+#endif
     
     /* =========================================================================
        CONFIGURACIÓN DE LORA
@@ -79,5 +81,8 @@ public:
 private:
     // Configuraciones por defecto
     static const SensorConfig defaultConfigs[]; // Configs no-Modbus
+#if defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
+    static const ModbusSensorConfig defaultModbusSensors[]; // Configs Modbus
+#endif
 };
 

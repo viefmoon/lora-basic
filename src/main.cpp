@@ -28,7 +28,7 @@
 #include <SensirionI2cSht3x.h>
 #include "LoRaManager.h"
 #include "BLE.h"
-
+#include "ADS124S08.h"
 #include "HardwareManager.h"
 #include "SleepManager.h"
 
@@ -51,6 +51,7 @@ PowerManager powerManager(ioExpander);
 SPIClass spi(FSPI);
 #ifdef DEVICE_TYPE_ANALOGIC
 SPISettings spiAdcSettings(SPI_ADC_CLOCK, MSBFIRST, SPI_MODE1);
+ADS124S08 ADC(ioExpander, spi, spiAdcSettings);
 #endif
 SPISettings spiRtdSettings(SPI_RTD_CLOCK, MSBFIRST, SPI_MODE1);
 SPISettings spiRadioSettings(SPI_RADIO_CLOCK, MSBFIRST, SPI_MODE0);
@@ -100,6 +101,8 @@ void setup() {
     pinMode(CONFIG_PIN, INPUT);
     ioExpander.pinMode(CONFIG_LED_PIN, OUTPUT);
 
+    // Inicializar los pines de selección SPI (SS)
+    SensorManager::initializeSPISSPins();
 
     // Modo configuración BLE
     if (BLEHandler::checkConfigMode(ioExpander)) {
@@ -144,12 +147,16 @@ void loop() {
 
     // Obtener todas las lecturas de sensores (normales y Modbus)
     std::vector<SensorReading> normalReadings;
+#if defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
     std::vector<ModbusSensorReading> modbusReadings;
-
     SensorManager::getAllSensorReadings(normalReadings, modbusReadings);
-
     // Usar el nuevo formato delimitado en lugar de JSON
     LoRaManager::sendDelimitedPayload(normalReadings, modbusReadings, node, deviceId, stationId, rtc);
+#else
+    SensorManager::getAllSensorReadings(normalReadings);
+    // Usar el nuevo formato delimitado en lugar de JSON
+    LoRaManager::sendDelimitedPayload(normalReadings, node, deviceId, stationId, rtc);
+#endif
 
     // Dormir
     SleepManager::goToDeepSleep(timeToSleep, powerManager, ioExpander, &radio, node, LWsession, spi);

@@ -1,6 +1,9 @@
 #include "ModbusSensorManager.h"
-#include "ModbusMaster.h"
 #include "config.h"    // Para SERIAL_BAUD
+
+#if defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
+
+#include "ModbusMaster.h"
 #include "debug.h"     // Para DEBUG_END
 #include "sensor_types.h" // Para ENV4Keys
 #include "sensor_constants.h" // Para SensorKeys
@@ -146,3 +149,5 @@ ModbusSensorReading ModbusSensorManager::readEnvSensor(const ModbusSensorConfig 
 
     return reading;
 }
+
+#endif // defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)

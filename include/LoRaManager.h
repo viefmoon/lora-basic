@@ -56,6 +56,7 @@ public:
         size_t bufferSize
     );
 
+#if defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
     /**
      * @brief Crea un payload optimizado con formato delimitado para sensores normales y Modbus.
      * @param normalReadings Vector con lecturas de sensores normales.
@@ -78,6 +79,7 @@ public:
         char* buffer,
         size_t bufferSize
     );
+#endif
 
     /**
      * @brief Envía el payload de sensores estándar usando formato delimitado.
@@ -93,6 +95,7 @@ public:
                                    const String& stationId, 
                                    RTC_DS3231& rtc);
 
+#if defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
     /**
      * @brief Envía el payload de sensores estándar y Modbus usando formato delimitado.
      * @param normalReadings Vector con lecturas de sensores estándar
@@ -108,6 +111,7 @@ public:
                                    const String& deviceId, 
                                    const String& stationId, 
                                    RTC_DS3231& rtc);
+#endif
 
     /**
      * @brief Prepara el módulo LoRa para entrar en modo sleep

@@ -52,7 +52,61 @@ void SleepManager::goToDeepSleep(uint32_t timeToSleep,
  * @brief Configura los pines no utilizados en alta impedancia para reducir el consumo durante deep sleep.
  */
 void SleepManager::configurePinsForDeepSleep() {
-    // Configurar pines específicos del módulo LoRa como ANALOG
+#ifdef DEVICE_TYPE_BASIC
+    // Configurar pines específicos del módulo LoRa como ANALOG para DEVICE_TYPE_BASIC
+    pinMode(ONE_WIRE_BUS, ANALOG);
+    pinMode(BATTERY_PIN, ANALOG);
+
+    pinMode(LORA_RST_PIN, ANALOG);
+    pinMode(LORA_BUSY_PIN, ANALOG);
+    pinMode(LORA_DIO1_PIN, ANALOG);
+    pinMode(SPI_SCK_PIN, ANALOG);
+    pinMode(SPI_MISO_PIN, ANALOG);
+    pinMode(SPI_MOSI_PIN, ANALOG);
+
+    pinMode(20, ANALOG); //Serial RX
+    pinMode(21, ANALOG); //Serial TX
+
+    pinMode(I2C_SDA_PIN, ANALOG); //I2C SDA
+    pinMode(I2C_SCL_PIN, ANALOG); //I2C SCL
+
+    pinMode(9, ANALOG); //LORA NSS
+
+    // Configurar explícitamente LORA_NSS_PIN como salida en alto para mantener el chip select del módulo LoRa desactivado
+    pinMode(LORA_NSS_PIN, OUTPUT);
+    digitalWrite(LORA_NSS_PIN, HIGH);
+    gpio_hold_en((gpio_num_t)LORA_NSS_PIN);
+#endif
+
+#ifdef DEVICE_TYPE_ANALOGIC
+    // Configurar pines específicos del módulo LoRa como ANALOG para DEVICE_TYPE_ANALOGIC
+    pinMode(FLOW_SENSOR_PIN, ANALOG);
+    pinMode(ONE_WIRE_BUS, ANALOG);
+    pinMode(BATTERY_ADC_PIN, ANALOG);
+
+    pinMode(LORA_RST_PIN, ANALOG);
+    pinMode(LORA_BUSY_PIN, ANALOG);
+    pinMode(LORA_DIO1_PIN, ANALOG);
+    pinMode(SPI_SCK_PIN, ANALOG);
+    pinMode(SPI_MISO_PIN, ANALOG);
+    pinMode(SPI_MOSI_PIN, ANALOG);
+
+    pinMode(20, ANALOG); //Serial RX
+    pinMode(21, ANALOG); //Serial TX
+
+    pinMode(I2C_SDA_PIN, ANALOG); //I2C SDA
+    pinMode(I2C_SCL_PIN, ANALOG); //I2C SCL
+
+    pinMode(9, ANALOG); //LORA NSS
+
+    // Configurar explícitamente LORA_NSS_PIN como salida en alto para mantener el chip select del módulo LoRa desactivado
+    pinMode(LORA_NSS_PIN, OUTPUT);
+    digitalWrite(LORA_NSS_PIN, HIGH);
+    gpio_hold_en((gpio_num_t)LORA_NSS_PIN);
+#endif
+
+#ifdef DEVICE_TYPE_MODBUS
+    // Configurar pines específicos del módulo LoRa como ANALOG para DEVICE_TYPE_MODBUS
     pinMode(FLOW_SENSOR_PIN, ANALOG);
     pinMode(BATTERY_PIN, ANALOG);
 
@@ -75,6 +129,7 @@ void SleepManager::configurePinsForDeepSleep() {
     pinMode(LORA_NSS_PIN, OUTPUT);
     digitalWrite(LORA_NSS_PIN, HIGH);
     gpio_hold_en((gpio_num_t)LORA_NSS_PIN);
+#endif
 }
 
 /**

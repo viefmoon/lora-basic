@@ -11,6 +11,8 @@
 #include <RadioLib.h>
 #include <RTClib.h>
 #include "utilities.h"  // Incluido para acceder a formatFloatTo3Decimals
+#include "config.h"     // Incluido para acceder a MAX_PAYLOAD
+#include "sensor_types.h"  // Incluido para acceder a ModbusSensorReading
 
 // Inicialización de variables estáticas
 LoRaWANNode* LoRaManager::node = nullptr;
@@ -226,6 +228,7 @@ size_t LoRaManager::createDelimitedPayload(
     return offset;
 }
 
+#if defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
 /**
  * @brief Crea un payload optimizado con formato delimitado para sensores normales y Modbus.
  * @param normalReadings Vector con lecturas de sensores normales.
@@ -320,6 +323,7 @@ size_t LoRaManager::createDelimitedPayload(
     
     return offset;
 }
+#endif
 
 /**
  * @brief Envía el payload de sensores estándar usando formato delimitado.
@@ -330,8 +334,7 @@ void LoRaManager::sendDelimitedPayload(const std::vector<SensorReading>& reading
                                      const String& stationId, 
                                      RTC_DS3231& rtc) 
 {
-    const int MAX_PAYLOAD = 200; // Tamaño máximo del buffer
-    char payloadBuffer[MAX_PAYLOAD + 1];
+    char payloadBuffer[MAX_LORA_PAYLOAD + 1];
     
     // Crear payload delimitado
     float battery = SensorManager::readBatteryVoltageADC();
@@ -368,6 +371,7 @@ void LoRaManager::sendDelimitedPayload(const std::vector<SensorReading>& reading
     }
 }
 
+#if defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
 /**
  * @brief Envía el payload de sensores estándar y Modbus usando formato delimitado.
  */
@@ -378,8 +382,7 @@ void LoRaManager::sendDelimitedPayload(const std::vector<SensorReading>& normalR
                                      const String& stationId, 
                                      RTC_DS3231& rtc)
 {
-    const int MAX_PAYLOAD = 200; // Tamaño máximo del buffer
-    char payloadBuffer[MAX_PAYLOAD + 1];
+    char payloadBuffer[MAX_LORA_PAYLOAD + 1];
     
     // Crear payload delimitado
     float battery = SensorManager::readBatteryVoltageADC();
@@ -415,6 +418,7 @@ void LoRaManager::sendDelimitedPayload(const std::vector<SensorReading>& normalR
         DEBUG_PRINTF("Error en transmisión: %d\n", state);
     }
 }
+#endif
 
 void LoRaManager::prepareForSleep(SX1262* radio) {
     if (radio) {

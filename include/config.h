@@ -2,9 +2,9 @@
 #define CONFIG_H
 
 // Descomentar solo UNO de los siguientes
-//#define DEVICE_TYPE_BASIC
-//#define DEVICE_TYPE_ANALOGIC
-#define DEVICE_TYPE_MODBUS
+// #define DEVICE_TYPE_BASIC
+#define DEVICE_TYPE_ANALOGIC
+// #define DEVICE_TYPE_MODBUS
 
 // Configuración de depuración - Comentar para deshabilitar mensajes de depuración
 #define DEBUG_ENABLED
@@ -38,6 +38,7 @@
 #define LORA_BUSY_PIN       4
 #define LORA_RST_PIN        5
 #define LORA_DIO1_PIN       3
+#define MAX_LORA_PAYLOAD    200
 
 // Serial
 #define SERIAL_BAUD_RATE        9600
@@ -63,6 +64,7 @@
 #define BLE_CHAR_SYSTEM_UUID         "2A37"
 #define BLE_CHAR_SENSORS_UUID        "2A40"
 #define BLE_CHAR_LORA_CONFIG_UUID    "2A41"
+#define BLE_DEVICE_PREFIX            "AGRICOS_"
 
 // Calibración batería
 const double R1 = 470000.0;
@@ -118,7 +120,7 @@ const double conversionFactor = (R1 + R2) / R1;
 #ifdef DEVICE_TYPE_ANALOGIC
 
 // Pines generales
-#define ONE_WIRE_BUS        0
+#define ONE_WIRE_BUS        1
 #define I2C_SDA_PIN         19
 #define I2C_SCL_PIN         18
 #define I2C_ADDRESS_PCA9555 0x20
@@ -144,6 +146,7 @@ const double conversionFactor = (R1 + R2) / R1;
 #define LORA_BUSY_PIN       4
 #define LORA_RST_PIN        5
 #define LORA_DIO1_PIN       3
+#define MAX_LORA_PAYLOAD    200
 
 // Serial
 #define SERIAL_BAUD_RATE         9600
@@ -214,7 +217,8 @@ const double conversionFactor = (R1 + R2) / R1;
 // Configuración Modbus
 #define MODBUS_BAUDRATE         9600
 #define MODBUS_SERIAL_CONFIG    SERIAL_8N1
-#define MODBUS_RESPONSE_TIMEOUT 1000  // Tiempo de espera para respuesta en ms
+#define MODBUS_RESPONSE_TIMEOUT 300  // Tiempo de espera para respuesta en ms
+#define MODBUS_MAX_RETRY        3     // Número máximo de intentos de lectura Modbus
 
 
 // Tamaños de documentos JSON - Centralizados
@@ -230,14 +234,15 @@ const double conversionFactor = (R1 + R2) / R1;
 #define POWER_2V5_PIN           P02
 #define POWER_STABILIZE_DELAY   20
 
-// ADC m08
-#define ADC_CS_PIN    P05
-#define ADC_DRDY_PIN  P06
-#define ADC_RST_PIN   P13
-#define SPI_ADC_CLOCK 100000
+// ADS124S08
+#define ADS124S08_CS_PIN        P05
+#define ADS124S08_DRDY_PIN      P06
+#define ADS124S08_RST_PIN       P13
+#define ADS124S08_START_PIN     P14
+#define SPI_ADC_CLOCK           1000000
 
 // FlowSensor
-#define FLOW_SENSOR_PIN 14
+#define FLOW_SENSOR_PIN 0
 
 // Namespaces analógicos
 #define NAMESPACE_NTC100K   "ntc_100k"
@@ -331,7 +336,7 @@ const double conversionFactor = (R1 + R2) / R1;
 
 
 #define DEFAULT_MODBUS_SENSOR_CONFIGS { \
-    {"ModbusEnv1", ENV_SENSOR, 1, true} \
+    {"ModbusEnv1", ENV4, 1, true} \
 }
 
 #endif
@@ -371,6 +376,7 @@ const double conversionFactor = (R1 + R2) / R1;
 #define LORA_BUSY_PIN       4
 #define LORA_RST_PIN        5
 #define LORA_DIO1_PIN       3
+#define MAX_LORA_PAYLOAD    200
 
 // Serial
 #define SERIAL_BAUD_RATE         9600

@@ -300,6 +300,8 @@ void ConfigManager::setLoRaConfig(
    CONFIGURACIÓN DE SENSORES MODBUS
    ========================================================================= */
 #if defined(DEVICE_TYPE_MODBUS) || defined(DEVICE_TYPE_ANALOGIC)
+// Definición de la variable estática
+const ModbusSensorConfig ConfigManager::defaultModbusSensors[] = DEFAULT_MODBUS_SENSOR_CONFIGS;
 
 void ConfigManager::setModbusSensorsConfigs(const std::vector<ModbusSensorConfig>& configs) {
     Preferences prefs;
@@ -348,12 +350,13 @@ std::vector<ModbusSensorConfig> ConfigManager::getEnabledModbusSensorConfigs() {
     std::vector<ModbusSensorConfig> all = getAllModbusSensorConfigs();
     std::vector<ModbusSensorConfig> enabled;
     for (auto &m : all) {
-        if (m.enable) enabled.push_back(m);
+        if (m.enable) {
+            enabled.push_back(m);
+        }
     }
     return enabled;
 }
-
-#endif // defined(DEVICE_TYPE_MODBUS) || defined(DEVICE_TYPE_ANALOGIC)
+#endif
 
 /* =========================================================================
    CONFIGURACIÓN DE SENSORES ANALÓGICOS (Solo para dispositivo analógico)

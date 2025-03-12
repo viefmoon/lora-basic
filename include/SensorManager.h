@@ -13,7 +13,9 @@
 #include <DallasTemperature.h>
 #endif
 #include <SensirionI2cSht3x.h>
+#if defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
 #include "ModbusSensorManager.h"
+#endif
 
 // Variables y objetos globales declarados en main.cpp
 extern RTC_DS3231 rtc;
@@ -40,18 +42,31 @@ class SensorManager {
     // Inicializa pines, periféricos (ADC, RTD, etc.), OneWire, etc.
     static void beginSensors();
 
+    // Inicializa los pines de selección SPI (SS)
+    static void initializeSPISSPins();
+
     // Devuelve la lectura (o lecturas) de un sensor NO-Modbus según su configuración.
     static SensorReading getSensorReading(const SensorConfig& cfg);
     
+#if defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
     // Devuelve la lectura de un sensor Modbus según su configuración
     static ModbusSensorReading getModbusSensorReading(const ModbusSensorConfig& cfg);
+#endif
     
     // Obtiene todas las lecturas de sensores (normales y Modbus) habilitados
-    static void getAllSensorReadings(std::vector<SensorReading>& normalReadings, 
-                                     std::vector<ModbusSensorReading>& modbusReadings);
+    static void getAllSensorReadings(std::vector<SensorReading>& normalReadings
+#if defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
+                                    , std::vector<ModbusSensorReading>& modbusReadings
+#endif
+                                    );
 
     // Lee el voltaje de la batería a través del pin analógico del ESP32.
     static float readBatteryVoltageADC();
+
+#ifdef DEVICE_TYPE_ANALOGIC
+    // Lee los 12 canales del ADS124S08 y devuelve los valores en voltios
+    static void readADS124S08Channels(float* channelVoltages);
+#endif
 
   private:
     // Métodos de lectura internos
@@ -62,7 +77,6 @@ class SensorManager {
     // Lectura unificada de SHT30
     static void readSht30(float& outTemp, float& outHum);
 
-    static void initializeSPISSPins();
     static float readSensorValue(const SensorConfig &cfg, SensorReading &reading);
 };
 
