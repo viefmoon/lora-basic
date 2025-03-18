@@ -26,12 +26,12 @@ enum SensorType {
     // Sensores estándar (no-Modbus)
     N100K,    // NTC 100K
     N10K,     // NTC 10K
+    HDS10,    // HDS10
     WNTC10K,  // Water NTC 10K
     RTD,      // RTD
     DS18B20,  // DS18B20
     PH,       // pH
     COND,     // Conductividad
-    CONDH,    // Condensation Humidity
     SOILH,    // Soil Humidity
     SHT30,    // SHT30
     
@@ -58,7 +58,6 @@ struct SensorConfig {
     char configKey[20];
     char sensorId[20];
     SensorType type;
-    uint8_t channel;
     char tempSensorId[20]; 
     bool enable;
 };

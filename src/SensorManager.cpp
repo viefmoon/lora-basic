@@ -67,22 +67,28 @@ void SensorManager::beginSensors() {
 
 #ifdef DEVICE_TYPE_ANALOGIC
     ADC.begin();
-    delay(100);
-    
     // Reset del ADC
     ADC.sendCommand(RESET_OPCODE_MASK);
-    delay(100);
+    delay(10);
 
     
-    // Leer los 12 canales del ADC
-    DEBUG_PRINTLN("Leyendo los 12 canales del ADS124S08:");
-    float channelVoltages[12];
+    // Leer los canales del ADC
+    DEBUG_PRINTLN("Leyendo los canales configurados del ADS124S08:");
+    float channelVoltages[9];
     readADS124S08Channels(channelVoltages);
     
     // Mostrar los valores leídos
-    for (int i = 0; i < 12; i++) {
-        DEBUG_PRINTF("Canal AIN%d: %.6f V\n", i, channelVoltages[i]);
-    }
+    DEBUG_PRINTLN("Canales diferenciales:");
+    DEBUG_PRINTF("Canal 0 (AIN1+/AIN0-): %.6f V\n", channelVoltages[0]);
+    DEBUG_PRINTF("Canal 1 (AIN3+/AIN2-): %.6f V\n", channelVoltages[1]);
+    DEBUG_PRINTF("Canal 2 (AIN5+/AIN4-): %.6f V\n", channelVoltages[2]);
+    DEBUG_PRINTLN("Canales single-ended:");
+    DEBUG_PRINTF("Canal 3 (AIN6/AINCOM): %.6f V\n", channelVoltages[3]);
+    DEBUG_PRINTF("Canal 4 (AIN7/AINCOM): %.6f V\n", channelVoltages[4]);
+    DEBUG_PRINTF("Canal 5 (AIN8/AINCOM): %.6f V\n", channelVoltages[5]);
+    DEBUG_PRINTF("Canal 6 (AIN0/AINCOM): %.6f V\n", channelVoltages[6]);
+    DEBUG_PRINTF("Canal 7 (AIN10/AINCOM): %.6f V\n", channelVoltages[7]);
+    DEBUG_PRINTF("Canal 8 (AIN11/AINCOM): %.6f V\n", channelVoltages[8]);
 #endif
 }
 
@@ -177,8 +183,6 @@ float SensorManager::readSensorValue(const SensorConfig &cfg, SensorReading &rea
         case PH:
         case COND:
         case SOILH:
-        case CONDH:
-            // No implementado pero debe devolver NAN, no cero
             reading.value = NAN; 
             break;
 
@@ -334,27 +338,21 @@ void SensorManager::readADS124S08Channels(float* channelVoltages) {
     
     // Iniciar conversión continua
     ADC.reStart();
-
-    DEBUG_PRINTLN("Iniciando conversión continua");
-    delay(1000);
     
-    // Leer los 12 canales del ADC
-    for (int i = 0; i < 12; i++) {
-        // Configurar multiplexor para leer canal i contra AINCOM
+    // Leer los canales del ADC según configuración específica
+    for (int i = 0; i < 9; i++) {
+        // Configurar multiplexor según canal específico
         uint8_t muxConfig = 0;
         switch (i) {
-            case 0: muxConfig = ADS_P_AIN0 | ADS_N_AINCOM; break;
-            case 1: muxConfig = ADS_P_AIN1 | ADS_N_AINCOM; break;
-            case 2: muxConfig = ADS_P_AIN2 | ADS_N_AINCOM; break;
-            case 3: muxConfig = ADS_P_AIN3 | ADS_N_AINCOM; break;
-            case 4: muxConfig = ADS_P_AIN4 | ADS_N_AINCOM; break;
-            case 5: muxConfig = ADS_P_AIN5 | ADS_N_AINCOM; break;
-            case 6: muxConfig = ADS_P_AIN6 | ADS_N_AINCOM; break;
-            case 7: muxConfig = ADS_P_AIN7 | ADS_N_AINCOM; break;
-            case 8: muxConfig = ADS_P_AIN8 | ADS_N_AINCOM; break;
-            case 9: muxConfig = ADS_P_AIN9 | ADS_N_AINCOM; break;
-            case 10: muxConfig = ADS_P_AIN10 | ADS_N_AINCOM; break;
-            case 11: muxConfig = ADS_P_AIN11 | ADS_N_AINCOM; break;
+            case 0: muxConfig = ADS_P_AIN1 | ADS_N_AIN0; break;  // Diferencial: AIN1+ y AIN0-
+            case 1: muxConfig = ADS_P_AIN3 | ADS_N_AIN2; break;  // Diferencial: AIN3+ y AIN2-
+            case 2: muxConfig = ADS_P_AIN5 | ADS_N_AIN4; break;  // Diferencial: AIN5+ y AIN4-
+            case 3: muxConfig = ADS_P_AIN6 | ADS_N_AINCOM; break; // AIN6 con común
+            case 4: muxConfig = ADS_P_AIN7 | ADS_N_AINCOM; break; // AIN7 con común
+            case 5: muxConfig = ADS_P_AIN8 | ADS_N_AINCOM; break; // AIN8 con común
+            case 6: muxConfig = ADS_P_AIN0 | ADS_N_AINCOM; break; // AIN0 con común
+            case 7: muxConfig = ADS_P_AIN10 | ADS_N_AINCOM; break; // AIN10 con común
+            case 8: muxConfig = ADS_P_AIN11 | ADS_N_AINCOM; break; // AIN11 con común
         }
         
         // Configurar el multiplexor

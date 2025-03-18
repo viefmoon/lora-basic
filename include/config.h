@@ -87,7 +87,6 @@ const double conversionFactor = (R1 + R2) / R1;
 #define KEY_SENSOR_ID           "id"
 #define KEY_SENSOR_ID_TEMPERATURE_SENSOR "ts"
 #define KEY_SENSOR_TYPE         "t"
-#define KEY_SENSOR_CHANNEL      "ch"
 #define KEY_SENSOR_ENABLE       "e"
 #define KEY_LORA_JOIN_EUI       "joinEUI"
 #define KEY_LORA_DEV_EUI        "devEUI"
@@ -149,7 +148,7 @@ const double conversionFactor = (R1 + R2) / R1;
 #define MAX_LORA_PAYLOAD    200
 
 // Serial
-#define SERIAL_BAUD_RATE         9600
+#define SERIAL_BAUD_RATE         115200
 
 // Deep Sleep
 #define DEFAULT_TIME_TO_SLEEP   30
@@ -200,7 +199,6 @@ const double conversionFactor = (R1 + R2) / R1;
 #define KEY_SENSOR_ID           "id"
 #define KEY_SENSOR_ID_TEMPERATURE_SENSOR "ts"
 #define KEY_SENSOR_TYPE         "t"
-#define KEY_SENSOR_CHANNEL      "ch"
 #define KEY_SENSOR_ENABLE       "e"
 #define KEY_LORA_JOIN_EUI       "joinEUI"
 #define KEY_LORA_DEV_EUI        "devEUI"
@@ -321,17 +319,19 @@ const double conversionFactor = (R1 + R2) / R1;
 #define KEY_PH_CT              "ph_ct"
 
 // Configuración default sensores
-#define DEFAULT_SENSOR_CONFIGS { \
-    {"0", "NTC1",  N100K,  0, "", true}, \
-    {"1", "NTC2",  N100K,  1, "", true}, \
-    {"2", "CH1",   CONDH,  2, "", true}, \
-    {"3", "SM1",   SOILH,  3, "", true}, \
-    {"4", "SM2",   SOILH,  4, "", true}, \
-    {"5", "CON1",  COND,   5, "", true}, \
-    {"7", "PH1",   PH,     7, "", true}, \
-    {"R", "RTD1",  RTD,    0, "", true}, \
-    {"D", "DS1",   DS18B20,0, "", true}, \
-    {"I2C", "SHT30", SHT30, 0, "", true} \
+#define  DEFAULT_SENSOR_CONFIGS { \
+    {"0", "NTC1",  N100K,  "", true}, \
+    {"1", "NTC2",  N100K,  "", true}, \
+    {"2", "NTC3",  N10K,  "", true}, \
+    {"3", "HDS10",  HDS10, "", true}, \
+    {"4", "COND",  COND, "", true}, \
+    {"5", "SM1",   SOILH,  "", true}, \
+    {"6", "SM2",   SOILH,  "", true}, \
+    {"7", "COND",  COND,   "", true}, \
+    {"8", "PH",    PH,     "", true}, \
+    {"R", "RTD1",  RTD,    "", true}, \
+    {"D", "DS1",   DS18B20, "", true}, \
+    {"SH3", "SHT30", SHT30,  "", true} \
 }
 
 
@@ -426,7 +426,6 @@ const double conversionFactor = (R1 + R2) / R1;
 #define KEY_SENSOR_ID                    "id"
 #define KEY_SENSOR_ID_TEMPERATURE_SENSOR "ts"
 #define KEY_SENSOR_TYPE                  "t"
-#define KEY_SENSOR_CHANNEL               "ch"
 #define KEY_SENSOR_ENABLE                "e"
 #define KEY_LORA_JOIN_EUI                "joinEUI"
 #define KEY_LORA_DEV_EUI                 "devEUI"
