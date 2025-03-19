@@ -509,7 +509,6 @@ void BLEHandler::SensorsConfigCallback::onWrite(BLECharacteristic *pCharacterist
         SensorConfig config;
         strncpy(config.configKey, sensor[KEY_SENSOR] | "", sizeof(config.configKey));
         strncpy(config.sensorId, sensor[KEY_SENSOR_ID] | "", sizeof(config.sensorId));
-        strncpy(config.tempSensorId, sensor[KEY_SENSOR_ID_TEMPERATURE_SENSOR] | "", sizeof(config.tempSensorId));
         config.type = static_cast<SensorType>(sensor[KEY_SENSOR_TYPE] | 0);
         config.enable = sensor[KEY_SENSOR_ENABLE] | false;
         
@@ -517,8 +516,6 @@ void BLEHandler::SensorsConfigCallback::onWrite(BLECharacteristic *pCharacterist
         DEBUG_PRINT(config.configKey);
         DEBUG_PRINT(F(", sensorId: "));
         DEBUG_PRINT(config.sensorId);
-        DEBUG_PRINT(F(", tempSensorId: "));
-        DEBUG_PRINT(config.tempSensorId);
         DEBUG_PRINT(F(", type: "));
         DEBUG_PRINT(static_cast<int>(config.type));
         DEBUG_PRINT(F(", enable: "));
@@ -544,8 +541,6 @@ void BLEHandler::SensorsConfigCallback::onRead(BLECharacteristic *pCharacteristi
         DEBUG_PRINT(sensor.sensorId);
         DEBUG_PRINT(F(", type: "));
         DEBUG_PRINT(static_cast<int>(sensor.type));
-        DEBUG_PRINT(F(", tempSensorId: "));
-        DEBUG_PRINT(sensor.tempSensorId);
         DEBUG_PRINT(F(", enable: "));
         DEBUG_PRINTLN(sensor.enable ? "true" : "false");
 
@@ -553,7 +548,6 @@ void BLEHandler::SensorsConfigCallback::onRead(BLECharacteristic *pCharacteristi
         obj[KEY_SENSOR]             = sensor.configKey;
         obj[KEY_SENSOR_ID]          = sensor.sensorId;
         obj[KEY_SENSOR_TYPE]        = static_cast<int>(sensor.type);
-        obj[KEY_SENSOR_ID_TEMPERATURE_SENSOR]   = sensor.tempSensorId;
         obj[KEY_SENSOR_ENABLE]      = sensor.enable;
     }
 

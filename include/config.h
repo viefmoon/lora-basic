@@ -178,7 +178,7 @@ const double conversionFactor = (R1 + R2) / R1;
 #define BLE_DEVICE_PREFIX            "AGRICOS_"
 
 // Calibración batería
-const double R1 = 470000.0;
+const double R1 = 1000000.0;
 const double R2 = 1500000.0;
 const double conversionFactor = (R1 + R2) / R1;
 
@@ -265,14 +265,14 @@ const double conversionFactor = (R1 + R2) / R1;
 #define DEFAULT_R3_10K      4253.0
 
 // Calibración Conductividad
-#define CONDUCTIVITY_DEFAULT_V1    0.5f
-#define CONDUCTIVITY_DEFAULT_T1    200.0f
-#define CONDUCTIVITY_DEFAULT_V2    1.0f
-#define CONDUCTIVITY_DEFAULT_T2    1000.0f
-#define CONDUCTIVITY_DEFAULT_V3    1.5f
-#define CONDUCTIVITY_DEFAULT_T3    2000.0f
+#define CONDUCTIVITY_DEFAULT_V1    0.010314f
+#define CONDUCTIVITY_DEFAULT_T1    84.0f
+#define CONDUCTIVITY_DEFAULT_V2    0.175384f
+#define CONDUCTIVITY_DEFAULT_T2    1413.0f
+#define CONDUCTIVITY_DEFAULT_V3    1.407745f
+#define CONDUCTIVITY_DEFAULT_T3    12880.0f
 #define TEMP_COEF_COMPENSATION     0.02f
-#define CONDUCTIVITY_DEFAULT_TEMP  25.0f
+#define CONDUCTIVITY_DEFAULT_TEMP  24.22f
 
 // Calibración pH
 #define PH_DEFAULT_V1          0.4425
@@ -320,24 +320,20 @@ const double conversionFactor = (R1 + R2) / R1;
 
 // Configuración default sensores
 #define  DEFAULT_SENSOR_CONFIGS { \
-    {"0", "NTC1",  N100K,  "", true}, \
-    {"1", "NTC2",  N100K,  "", true}, \
-    {"2", "NTC3",  N10K,  "", true}, \
-    {"3", "HDS10",  HDS10, "", true}, \
-    {"4", "COND",  COND, "", true}, \
-    {"5", "SM1",   SOILH,  "", true}, \
-    {"6", "SM2",   SOILH,  "", true}, \
-    {"7", "COND",  COND,   "", true}, \
-    {"8", "PH",    PH,     "", true}, \
-    {"R", "RTD1",  RTD,    "", true}, \
-    {"D", "DS1",   DS18B20, "", true}, \
-    {"SH3", "SHT30", SHT30,  "", true} \
+    {"0", "NTC1",  N100K, true}, \
+    {"1", "NTC2",  N100K, true}, \
+    {"2", "NTC3",  N10K, true}, \
+    {"3", "HDS10",  HDS10, true}, \
+    {"4", "COND",  COND, true}, \
+    {"5", "SM1",   SOILH, true}, \
+    {"8", "PH",    PH, true}, \
+    {"R", "RTD1",  RTD, true}, \
+    {"D", "DS1",   DS18B20, true}, \
+    {"I2C", "SHT30", SHT30, true} \
 }
 
-
-#define DEFAULT_MODBUS_SENSOR_CONFIGS { \
-    {"ModbusEnv1", ENV4, 1, true} \
-}
+// Sin sensores Modbus registrados
+#define DEFAULT_MODBUS_SENSOR_CONFIGS { }
 
 #endif
 
@@ -462,9 +458,8 @@ const double conversionFactor = (R1 + R2) / R1;
     {"I2C", "SHT30", SHT30, 0, "", true} \
 }
 
-#define DEFAULT_MODBUS_SENSOR_CONFIGS { \
-    {"Env1", ENV4, 1, true} \
-}
+// Sin sensores Modbus registrados
+#define DEFAULT_MODBUS_SENSOR_CONFIGS { }
 
 #endif
 

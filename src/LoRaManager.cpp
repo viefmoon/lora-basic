@@ -13,6 +13,8 @@
 #include "utilities.h"  // Incluido para acceder a formatFloatTo3Decimals
 #include "config.h"     // Incluido para acceder a MAX_PAYLOAD
 #include "sensor_types.h"  // Incluido para acceder a ModbusSensorReading
+#include "config_manager.h"
+#include "sensors/BatterySensor.h"
 
 // Inicialización de variables estáticas
 LoRaWANNode* LoRaManager::node = nullptr;
@@ -337,7 +339,7 @@ void LoRaManager::sendDelimitedPayload(const std::vector<SensorReading>& reading
     char payloadBuffer[MAX_LORA_PAYLOAD + 1];
     
     // Crear payload delimitado
-    float battery = SensorManager::readBatteryVoltageADC();
+    float battery = BatterySensor::readVoltage();
     uint32_t timestamp = rtc.now().unixtime();
     
     size_t payloadLength = createDelimitedPayload(
@@ -385,7 +387,7 @@ void LoRaManager::sendDelimitedPayload(const std::vector<SensorReading>& normalR
     char payloadBuffer[MAX_LORA_PAYLOAD + 1];
     
     // Crear payload delimitado
-    float battery = SensorManager::readBatteryVoltageADC();
+    float battery = BatterySensor::readVoltage();
     uint32_t timestamp = rtc.now().unixtime();
     
     size_t payloadLength = createDelimitedPayload(

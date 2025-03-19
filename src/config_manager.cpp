@@ -125,7 +125,6 @@ void ConfigManager::initializeDefaultConfig() {
             sensorObj[KEY_SENSOR] = config.configKey;
             sensorObj[KEY_SENSOR_ID] = config.sensorId;
             sensorObj[KEY_SENSOR_TYPE] = static_cast<int>(config.type);
-            sensorObj[KEY_SENSOR_ID_TEMPERATURE_SENSOR] = config.tempSensorId;
             sensorObj[KEY_SENSOR_ENABLE] = config.enable;
         }
         
@@ -217,8 +216,6 @@ std::vector<SensorConfig> ConfigManager::getAllSensorConfigs() {
         const char* sensorId = sensorObj[KEY_SENSOR_ID] | "";
         strncpy(config.sensorId, sensorId, sizeof(config.sensorId));
         config.type = static_cast<SensorType>(sensorObj[KEY_SENSOR_TYPE] | 0);
-        const char* tempSensorId = sensorObj[KEY_SENSOR_ID_TEMPERATURE_SENSOR] | "";
-        strncpy(config.tempSensorId, tempSensorId, sizeof(config.tempSensorId));
         config.enable = sensorObj[KEY_SENSOR_ENABLE] | false;
         
         configs.push_back(config);
@@ -251,7 +248,6 @@ void ConfigManager::setSensorsConfigs(const std::vector<SensorConfig>& configs) 
         sensorObj[KEY_SENSOR] = sensor.configKey;
         sensorObj[KEY_SENSOR_ID] = sensor.sensorId;
         sensorObj[KEY_SENSOR_TYPE] = static_cast<int>(sensor.type);
-        sensorObj[KEY_SENSOR_ID_TEMPERATURE_SENSOR] = sensor.tempSensorId;
         sensorObj[KEY_SENSOR_ENABLE] = sensor.enable;
     }
     

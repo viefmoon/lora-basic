@@ -1,6 +1,7 @@
 #include "SensorManager.h"
 #include <Wire.h>
 #include <SPI.h>
+#include <cmath>  // Para fabs() y otras funciones matemáticas
 #if defined(DEVICE_TYPE_BASIC) || defined(DEVICE_TYPE_ANALOGIC)
 #include <DallasTemperature.h>
 #endif
@@ -9,13 +10,30 @@
 #include "config.h"
 #include <Preferences.h>
 #include "config_manager.h"
-#include "Debug.h"
+#include "debug.h"
 #include "sensor_constants.h"  // Para tiempos de estabilización
 #include "utilities.h"
+
 #ifdef DEVICE_TYPE_ANALOGIC
 #include "ADS124S08.h"
+#include "NtcManager.h"
+#include "AdcUtilities.h"
+#include "sensors/PHSensor.h"
+#include "sensors/ConductivitySensor.h"
+#include "sensors/HDS10Sensor.h"
 extern ADS124S08 ADC;
 #endif
+
+// Inclusión de nuevos sensores
+#include "sensors/RTDSensor.h"
+#include "sensors/SHT30Sensor.h"
+#if defined(DEVICE_TYPE_BASIC) || defined(DEVICE_TYPE_ANALOGIC)
+#include "sensors/DS18B20Sensor.h"
+#endif
+
+// -------------------------------------------------------------------------------------
+// Métodos de la clase SensorManager
+// -------------------------------------------------------------------------------------
 
 void SensorManager::beginSensors() {
     // Inicializar pines de SPI (SS) y luego SPI
@@ -71,24 +89,20 @@ void SensorManager::beginSensors() {
     ADC.sendCommand(RESET_OPCODE_MASK);
     delay(10);
 
+    // Asegurarse de que el ADC esté despierto
+    ADC.sendCommand(WAKE_OPCODE_MASK);
     
-    // Leer los canales del ADC
-    DEBUG_PRINTLN("Leyendo los canales configurados del ADS124S08:");
-    float channelVoltages[9];
-    readADS124S08Channels(channelVoltages);
+    // Configurar ADC con referencia interna
+    ADC.regWrite(REF_ADDR_MASK, ADS_REFINT_ON_ALWAYS | ADS_REFSEL_INT);
     
-    // Mostrar los valores leídos
-    DEBUG_PRINTLN("Canales diferenciales:");
-    DEBUG_PRINTF("Canal 0 (AIN1+/AIN0-): %.6f V\n", channelVoltages[0]);
-    DEBUG_PRINTF("Canal 1 (AIN3+/AIN2-): %.6f V\n", channelVoltages[1]);
-    DEBUG_PRINTF("Canal 2 (AIN5+/AIN4-): %.6f V\n", channelVoltages[2]);
-    DEBUG_PRINTLN("Canales single-ended:");
-    DEBUG_PRINTF("Canal 3 (AIN6/AINCOM): %.6f V\n", channelVoltages[3]);
-    DEBUG_PRINTF("Canal 4 (AIN7/AINCOM): %.6f V\n", channelVoltages[4]);
-    DEBUG_PRINTF("Canal 5 (AIN8/AINCOM): %.6f V\n", channelVoltages[5]);
-    DEBUG_PRINTF("Canal 6 (AIN0/AINCOM): %.6f V\n", channelVoltages[6]);
-    DEBUG_PRINTF("Canal 7 (AIN10/AINCOM): %.6f V\n", channelVoltages[7]);
-    DEBUG_PRINTF("Canal 8 (AIN11/AINCOM): %.6f V\n", channelVoltages[8]);
+    // Deshabilitar PGA (bypass)
+    ADC.regWrite(PGA_ADDR_MASK, ADS_PGA_BYPASS); // PGA_EN = 0, ganancia ignorada
+    
+    // Ajustar velocidad de muestreo
+    ADC.regWrite(DATARATE_ADDR_MASK, ADS_DR_4000);
+    
+    // Iniciar conversión continua
+    ADC.reStart();
 #endif
 }
 
@@ -98,12 +112,13 @@ void SensorManager::initializeSPISSPins() {
     digitalWrite(LORA_NSS_PIN, HIGH);
 
     // Inicializar SS conectados al expansor
-    ioExpander.pinMode(PT100_CS_PIN, OUTPUT); //ss de p100
+    ioExpander.pinMode(PT100_CS_PIN, OUTPUT); // ss de p100
     ioExpander.digitalWrite(PT100_CS_PIN, HIGH);
-    #ifdef DEVICE_TYPE_ANALOGIC
-    ioExpander.pinMode(ADS124S08_CS_PIN, OUTPUT); //ss del adc
+
+#ifdef DEVICE_TYPE_ANALOGIC
+    ioExpander.pinMode(ADS124S08_CS_PIN, OUTPUT); // ss del adc
     ioExpander.digitalWrite(ADS124S08_CS_PIN, HIGH);
-    #endif
+#endif
 }
 
 SensorReading SensorManager::getSensorReading(const SensorConfig &cfg) {
@@ -118,87 +133,74 @@ SensorReading SensorManager::getSensorReading(const SensorConfig &cfg) {
     return reading;
 }
 
-float SensorManager::readBatteryVoltageADC() {
-#if defined(DEVICE_TYPE_ANALOGIC)
-    analogReadResolution(12);
-    int reading = analogRead(BATTERY_ADC_PIN);
-    if (reading < 0) {
-        return NAN;
-    }
-    float voltage = (reading / 4095.0f) * 3.3f;
-    float batteryVoltage = voltage * conversionFactor;
-    return batteryVoltage; 
-#elif defined(DEVICE_TYPE_BASIC) || defined(DEVICE_TYPE_MODBUS)
-    analogReadResolution(12);
-    int reading = analogRead(BATTERY_PIN);
-    if (reading < 0) {
-        return NAN;
-    }
-    float voltage = (reading / 4095.0f) * 3.3f;
-    float batteryVoltage = voltage * conversionFactor;
-    return batteryVoltage; 
-#endif
-}
-
-float SensorManager::readRtdSensor() {
-    uint8_t status = rtd.read_all();
-    if (status == 0) {
-        return rtd.temperature();
-    } else {
-        return NAN;
-    }
-}
-
-#if defined(DEVICE_TYPE_BASIC) || defined(DEVICE_TYPE_ANALOGIC)
-float SensorManager::readDallasSensor() {
-    dallasTemp.requestTemperatures();
-    float temp = dallasTemp.getTempCByIndex(0);
-    if (temp == DEVICE_DISCONNECTED_C) {
-        return NAN;
-    }
-    return temp;
-}
-#endif
-
-void SensorManager::readSht30(float &outTemp, float &outHum) {
-    float temperature = 0.0f;
-    float humidity = 0.0f;
-
-    int16_t error = sht30Sensor.measureSingleShot(REPEATABILITY_HIGH, false, temperature, humidity);
-    delay(20);
-    if (error != NO_ERROR) {
-        outTemp = NAN;
-        outHum = NAN;
-        return;
-    }
-    outTemp = temperature;
-    outHum = humidity;
-}
-
+/**
+ * @brief Lógica principal para leer el valor de cada sensor normal (no Modbus) según su tipo.
+ */
 float SensorManager::readSensorValue(const SensorConfig &cfg, SensorReading &reading) {
     switch (cfg.type) {
         case N100K:
+#ifdef DEVICE_TYPE_ANALOGIC
+            // Usar NtcManager para obtener la temperatura
+            reading.value = NtcManager::readNtc100kTemperature(cfg.configKey);
+#else
+            reading.value = NAN;
+#endif
+            break;
+
         case N10K:
-        case WNTC10K:
+#ifdef DEVICE_TYPE_ANALOGIC
+            // Usar NtcManager para obtener la temperatura del NTC de 10k
+            reading.value = NtcManager::readNtc10kTemperature();
+#else
+            reading.value = NAN;
+#endif
+            break;
+            
+        case HDS10:
+#ifdef DEVICE_TYPE_ANALOGIC
+            // Leer sensor HDS10 y obtener el porcentaje de humedad
+            reading.value = HDS10Sensor::read();
+#else
+            reading.value = NAN;
+#endif
+            break;
+            
         case PH:
+#ifdef DEVICE_TYPE_ANALOGIC
+            // Leer sensor de pH y obtener valor
+            reading.value = PHSensor::read();
+#else
+            reading.value = NAN;
+#endif
+            break;
+
         case COND:
+#ifdef DEVICE_TYPE_ANALOGIC
+            // Leer sensor de conductividad y obtener valor en ppm
+            reading.value = ConductivitySensor::read();
+#else
+            reading.value = NAN;
+#endif
+            break;
+        
         case SOILH:
             reading.value = NAN; 
             break;
 
         case RTD:
-            reading.value = readRtdSensor();
+            reading.value = RTDSensor::read();
             break;
 
 #if defined(DEVICE_TYPE_BASIC) || defined(DEVICE_TYPE_ANALOGIC)
         case DS18B20:
-            reading.value = readDallasSensor();
+            reading.value = DS18B20Sensor::read();
             break;
 #endif
 
-        case SHT30: {
+        case SHT30:
+        {
             float tmp = 0.0f, hum = 0.0f;
-            readSht30(tmp, hum);
+            SHT30Sensor::read(tmp, hum);
             reading.subValues.clear();
             {
                 SubValue sT; strncpy(sT.key, "T", sizeof(sT.key)); sT.value = tmp;
@@ -208,10 +210,10 @@ float SensorManager::readSensorValue(const SensorConfig &cfg, SensorReading &rea
                 SubValue sH; strncpy(sH.key, "H", sizeof(sH.key)); sH.value = hum;
                 reading.subValues.push_back(sH);
             }
-            // Asignar el valor principal como NAN si alguno de los valores del sensor falló
+            // Asignar el valor principal como NAN si alguno de los valores falló
             reading.value = (isnan(tmp) || isnan(hum)) ? NAN : tmp;
-            break;
         }
+        break;
 
         default:
             reading.value = NAN;
@@ -282,7 +284,7 @@ void SensorManager::getAllSensorReadings(std::vector<SensorReading>& normalReadi
                     break;
                 // Añadir casos para otros tipos de sensores Modbus con sus respectivos tiempos
                 default:
-                    sensorStabilizationTime = 1000; // Tiempo predeterminado si no se especifica
+                    sensorStabilizationTime = 500; // Tiempo predeterminado si no se especifica
                     break;
             }
             
@@ -293,11 +295,11 @@ void SensorManager::getAllSensorReadings(std::vector<SensorReading>& normalReadi
         }
         
         // Encender alimentación de 12V para sensores Modbus
-        #if defined(DEVICE_TYPE_MODBUS) || defined(DEVICE_TYPE_ANALOGIC)
-            powerManager.power12VOn();
-            DEBUG_PRINTF("Esperando %u ms para estabilización de sensores Modbus\n", maxStabilizationTime);
-            delay(maxStabilizationTime);
-        #endif
+#if defined(DEVICE_TYPE_MODBUS) || defined(DEVICE_TYPE_ANALOGIC)
+        powerManager.power12VOn();
+        DEBUG_PRINTF("Esperando %u ms para estabilización de sensores Modbus\n", maxStabilizationTime);
+        delay(maxStabilizationTime);
+#endif
         
         // Inicializar comunicación Modbus antes de comenzar las mediciones
         ModbusSensorManager::beginModbus();
@@ -311,71 +313,13 @@ void SensorManager::getAllSensorReadings(std::vector<SensorReading>& normalReadi
         ModbusSensorManager::endModbus();
         
         // Apagar alimentación de 12V después de completar las lecturas
-        #if defined(DEVICE_TYPE_MODBUS) || defined(DEVICE_TYPE_ANALOGIC)
-            powerManager.power12VOff();
-        #endif
+#if defined(DEVICE_TYPE_MODBUS) || defined(DEVICE_TYPE_ANALOGIC)
+        powerManager.power12VOff();
+#endif
     }
 #endif
 }
 
 #ifdef DEVICE_TYPE_ANALOGIC
-/**
- * @brief Lee los 12 canales del ADS124S08 y devuelve los valores en voltios
- * 
- * @param channelVoltages Array de 12 elementos donde se almacenarán los voltajes leídos
- */
-void SensorManager::readADS124S08Channels(float* channelVoltages) {
-    // Asegurarse de que el ADC esté despierto
-    ADC.sendCommand(WAKE_OPCODE_MASK);
-    
-    // Configurar ADC con referencia interna
-    ADC.regWrite(REF_ADDR_MASK, ADS_REFINT_ON_ALWAYS | ADS_REFSEL_INT);
-    
-    // Deshabilitar PGA (bypass)
-    ADC.regWrite(PGA_ADDR_MASK, ADS_PGA_BYPASS); // PGA_EN = 0, ganancia ignorada
-    
-    ADC.regWrite(DATARATE_ADDR_MASK, ADS_DR_4000);
-    
-    // Iniciar conversión continua
-    ADC.reStart();
-    
-    // Leer los canales del ADC según configuración específica
-    for (int i = 0; i < 9; i++) {
-        // Configurar multiplexor según canal específico
-        uint8_t muxConfig = 0;
-        switch (i) {
-            case 0: muxConfig = ADS_P_AIN1 | ADS_N_AIN0; break;  // Diferencial: AIN1+ y AIN0-
-            case 1: muxConfig = ADS_P_AIN3 | ADS_N_AIN2; break;  // Diferencial: AIN3+ y AIN2-
-            case 2: muxConfig = ADS_P_AIN5 | ADS_N_AIN4; break;  // Diferencial: AIN5+ y AIN4-
-            case 3: muxConfig = ADS_P_AIN6 | ADS_N_AINCOM; break; // AIN6 con común
-            case 4: muxConfig = ADS_P_AIN7 | ADS_N_AINCOM; break; // AIN7 con común
-            case 5: muxConfig = ADS_P_AIN8 | ADS_N_AINCOM; break; // AIN8 con común
-            case 6: muxConfig = ADS_P_AIN0 | ADS_N_AINCOM; break; // AIN0 con común
-            case 7: muxConfig = ADS_P_AIN10 | ADS_N_AINCOM; break; // AIN10 con común
-            case 8: muxConfig = ADS_P_AIN11 | ADS_N_AINCOM; break; // AIN11 con común
-        }
-        
-        // Configurar el multiplexor
-        ADC.regWrite(INPMUX_ADDR_MASK, muxConfig);
-        
-        // Leer datos
-        uint8_t status = 0, crc = 0;
-        int32_t rawData = ADC.dataRead(&status, &status, &crc);
-        
-        // Asegurarse de que los datos estén correctamente interpretados en complemento a dos
-        // El ADC devuelve 24 bits en complemento a dos, pero pueden no estar extendidos correctamente
-        // Verificar si el bit 23 está activado (número negativo) y extender el signo si es necesario
-        if (rawData & 0x00800000) {
-            // Forzar la extensión de signo a los bits superiores (24-31)
-            rawData |= 0xFF000000;
-        }
-        
-        // Convertir a voltaje (asumiendo referencia interna de 2.5V)
-        // El ADC es de 24 bits, pero el bit más significativo es de signo
-        channelVoltages[i] = (float)rawData / 8388608.0f * 2.5f; // 2^23 = 8388608
-    }
-    
-    // Detener conversión
-    ADC.sendCommand(STOP_OPCODE_MASK);
-}
+// Las funciones de sensores se han movido a sus propias clases
 #endif

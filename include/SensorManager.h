@@ -15,6 +15,9 @@
 #include <SensirionI2cSht3x.h>
 #if defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
 #include "ModbusSensorManager.h"
+#ifdef DEVICE_TYPE_ANALOGIC
+#include "NtcManager.h"
+#endif
 #endif
 
 // Variables y objetos globales declarados en main.cpp
@@ -60,22 +63,23 @@ class SensorManager {
 #endif
                                     );
 
-    // Lee el voltaje de la batería a través del pin analógico del ESP32.
-    static float readBatteryVoltageADC();
-
 #ifdef DEVICE_TYPE_ANALOGIC
-    // Lee los 12 canales del ADS124S08 y devuelve los valores en voltios
-    static void readADS124S08Channels(float* channelVoltages);
+    
+    // Ya no son necesarios, se movieron a sus propias clases
+    // static float readHDS10Sensor();
+    // static float convertResistanceToHumidity(float resistance);
+    // static float readConductivitySensor();
+    // static float convertVoltageToConductivity(float voltage, float tempC);
+    // static float readPHSensor();
+    // static float convertVoltageToPH(float voltage, float tempC);
 #endif
 
   private:
     // Métodos de lectura internos
-    static float readRtdSensor();
-#if defined(DEVICE_TYPE_BASIC) || defined(DEVICE_TYPE_ANALOGIC)
-    static float readDallasSensor();
-#endif
-    // Lectura unificada de SHT30
-    static void readSht30(float& outTemp, float& outHum);
+    // Ya no son necesarios, se han movido a sus propias clases
+    // static float readRtdSensor();
+    // static float readDallasSensor();
+    // static void readSht30(float& outTemp, float& outHum);
 
     static float readSensorValue(const SensorConfig &cfg, SensorReading &reading);
 };

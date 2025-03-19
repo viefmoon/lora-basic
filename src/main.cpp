@@ -80,7 +80,7 @@ void setup() {
 
     SleepManager::releaseHeldPins();
 
-    // Inicialización del NVS y de hardware I2C/IO
+    // // Inicialización del NVS y de hardware I2C/IO
     // preferences.clear();
     // nvs_flash_erase();
     // nvs_flash_init();

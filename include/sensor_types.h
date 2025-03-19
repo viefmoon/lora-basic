@@ -27,7 +27,6 @@ enum SensorType {
     N100K,    // NTC 100K
     N10K,     // NTC 10K
     HDS10,    // HDS10
-    WNTC10K,  // Water NTC 10K
     RTD,      // RTD
     DS18B20,  // DS18B20
     PH,       // pH
@@ -58,7 +57,6 @@ struct SensorConfig {
     char configKey[20];
     char sensorId[20];
     SensorType type;
-    char tempSensorId[20]; 
     bool enable;
 };
 
