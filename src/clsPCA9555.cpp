@@ -92,17 +92,17 @@ bool PCA9555::begin() {
             
             // Añadir pequeños delays entre escrituras I2C
             I2CSetValue(_address, NXP_OUTPUT, _valueRegister_low);
-            delay(5);
+            delayMicroseconds(100);
             I2CSetValue(_address, NXP_OUTPUT + 1, _valueRegister_high);
-            delay(5);
+            delayMicroseconds(100);
             I2CSetValue(_address, NXP_CONFIG, _configurationRegister_low);
-            delay(5);
+            delayMicroseconds(100);
             I2CSetValue(_address, NXP_CONFIG + 1, _configurationRegister_high);
 
             return true;
         }
         
-        delay(10);  // Esperar antes del siguiente intento
+        delayMicroseconds(100);  // Esperar antes del siguiente intento
     }
 
     // Solo mostrar error después de todos los intentos fallidos

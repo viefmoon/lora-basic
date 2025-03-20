@@ -82,7 +82,6 @@ void SleepManager::configurePinsForDeepSleep() {
     // Configurar pines específicos del módulo LoRa como ANALOG para DEVICE_TYPE_ANALOGIC
     pinMode(FLOW_SENSOR_PIN, ANALOG);
     pinMode(ONE_WIRE_BUS, ANALOG);
-    pinMode(BATTERY_ADC_PIN, ANALOG);
 
     pinMode(LORA_RST_PIN, ANALOG);
     pinMode(LORA_BUSY_PIN, ANALOG);

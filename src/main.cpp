@@ -43,6 +43,7 @@ uint32_t timeToSleep;
 String deviceId;
 String stationId;
 bool systemInitialized;
+unsigned long setupStartTime; // Variable para almacenar el tiempo de inicio
 
 RTC_DS3231 rtc;
 PCA9555 ioExpander(I2C_ADDRESS_PCA9555, I2C_SDA_PIN, I2C_SCL_PIN);
@@ -76,6 +77,7 @@ Preferences store;
 // setup()
 //--------------------------------------------------------------------------------------------
 void setup() {
+    setupStartTime = millis(); // Inicia el contador de tiempo
     DEBUG_BEGIN(SERIAL_BAUD_RATE);
 
     SleepManager::releaseHeldPins();
@@ -87,13 +89,12 @@ void setup() {
 
     // Inicialización de configuración
     if (!ConfigManager::checkInitialized()) {
-        DEBUG_PRINTLN("Primera ejecución detectada. Inicializando configuración...");
         ConfigManager::initializeDefaultConfig();
     }
     ConfigManager::getSystemConfig(systemInitialized, timeToSleep, deviceId, stationId);
 
     // Inicialización de hardware
-    if (!HardwareManager::initHardware(ioExpander, powerManager, sht30Sensor)) {
+    if (!HardwareManager::initHardware(ioExpander, powerManager, sht30Sensor, spi)) {
         DEBUG_PRINTLN("Error en la inicialización del hardware");
     }
 
@@ -103,6 +104,7 @@ void setup() {
 
     // Inicializar los pines de selección SPI (SS)
     SensorManager::initializeSPISSPins();
+
 
     // Modo configuración BLE
     if (BLEHandler::checkConfigMode(ioExpander)) {
@@ -114,8 +116,13 @@ void setup() {
         DEBUG_PRINTLN("No se pudo encontrar RTC");
     }
 
+    //TIEMPO TRASCURRIDO HASTA EL MOMENTO ≈ 14 ms
     // Inicializar sensores
     SensorManager::beginSensors();
+
+    DEBUG_PRINTF("Tiempo transcurrido hardware: %lu ms\n", millis() - setupStartTime);
+    DEBUG_PRINTLN("Iniciando configuración de pines");
+    DEBUG_PRINTF("Tiempo transcurrido pines: %lu ms\n", millis() - setupStartTime);
     
     // Inicializar radio LoRa
     int16_t state = radio.begin();
@@ -134,6 +141,8 @@ void setup() {
 
     // Ajustar datarate
     LoRaManager::setDatarate(node, 3);
+    // Debug del tiempo transcurrido antes de enviar datos
+    DEBUG_PRINTF("Tiempo transcurrido al final de setup: %lu ms\n", millis() - setupStartTime);
 }
 
 //--------------------------------------------------------------------------------------------
@@ -150,14 +159,27 @@ void loop() {
 #if defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
     std::vector<ModbusSensorReading> modbusReadings;
     SensorManager::getAllSensorReadings(normalReadings, modbusReadings);
+    
+    // Debug del tiempo transcurrido antes de enviar datos
+    DEBUG_PRINTF("Tiempo transcurrido antes de enviar datos: %lu ms\n", millis() - setupStartTime);
+    
     // Usar el nuevo formato delimitado en lugar de JSON
     LoRaManager::sendDelimitedPayload(normalReadings, modbusReadings, node, deviceId, stationId, rtc);
 #else
     SensorManager::getAllSensorReadings(normalReadings);
+    
+    // Debug del tiempo transcurrido antes de enviar datos
+    DEBUG_PRINTF("Tiempo transcurrido antes de enviar datos: %lu ms\n", millis() - setupStartTime);
+    
     // Usar el nuevo formato delimitado en lugar de JSON
     LoRaManager::sendDelimitedPayload(normalReadings, node, deviceId, stationId, rtc);
 #endif
 
+    // Calcular y mostrar el tiempo transcurrido antes de dormir
+    unsigned long elapsedTime = millis() - setupStartTime;
+    DEBUG_PRINTF("Tiempo transcurrido antes de sleep: %lu ms\n", elapsedTime);
+    delay(100);
+    
     // Dormir
     SleepManager::goToDeepSleep(timeToSleep, powerManager, ioExpander, &radio, node, LWsession, spi);
 }

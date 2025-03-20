@@ -41,7 +41,7 @@
 #define MAX_LORA_PAYLOAD    200
 
 // Serial
-#define SERIAL_BAUD_RATE        921600
+#define SERIAL_BAUD_RATE        115200
 
 // Deep Sleep
 #define DEFAULT_TIME_TO_SLEEP   30
@@ -148,7 +148,7 @@ const double conversionFactor = (R1 + R2) / R1;
 #define MAX_LORA_PAYLOAD    200
 
 // Serial
-#define SERIAL_BAUD_RATE         921600
+#define SERIAL_BAUD_RATE         115200
 
 // Deep Sleep
 #define DEFAULT_TIME_TO_SLEEP   30
@@ -377,7 +377,7 @@ const double conversionFactor = (R1 + R2) / R1;
 #define MAX_LORA_PAYLOAD    200
 
 // Serial
-#define SERIAL_BAUD_RATE         9600
+#define SERIAL_BAUD_RATE         115200
 
 // Deep Sleep
 #define DEFAULT_TIME_TO_SLEEP   30

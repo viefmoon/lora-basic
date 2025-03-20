@@ -16,7 +16,7 @@
 
 #ifdef DEVICE_TYPE_ANALOGIC
 #include "ADS124S08.h"
-#include "NtcManager.h"
+#include "sensors/NtcManager.h"
 #include "AdcUtilities.h"
 #include "sensors/PHSensor.h"
 #include "sensors/ConductivitySensor.h"
@@ -36,9 +36,6 @@ extern ADS124S08 ADC;
 // -------------------------------------------------------------------------------------
 
 void SensorManager::beginSensors() {
-    // Inicializar pines de SPI (SS) y luego SPI
-    spi.begin(SPI_SCK_PIN, SPI_MISO_PIN, SPI_MOSI_PIN);
-
     // Encender alimentación 3.3V
     powerManager.power3V3On();
     
@@ -63,32 +60,21 @@ void SensorManager::beginSensors() {
     }
 
 #if defined(DEVICE_TYPE_BASIC) || defined(DEVICE_TYPE_ANALOGIC)
+    // TIEMPO ejecución ≈ 65 ms
     // Inicializar DS18B20
     dallasTemp.begin();
-    dallasTemp.setResolution(12);
     // Lectura inicial
     dallasTemp.requestTemperatures();
-    delay(750);
     dallasTemp.getTempCByIndex(0);
+    ////////////////////////////////////////////////////////////////
 #endif
 
-    // Inicializar SHT30
-    sht30Sensor.begin(Wire, SHT30_I2C_ADDR_44);
-    sht30Sensor.stopMeasurement();
-    delay(1);
-    sht30Sensor.softReset();
-    delay(100);
-    
-    float dummyTemp = 0.0f, dummyHum = 0.0f;
-    sht30Sensor.measureSingleShot(REPEATABILITY_HIGH, false, dummyTemp, dummyHum);
-    delay(20);
-
 #ifdef DEVICE_TYPE_ANALOGIC
+    // TIEMPO ejecución ≈ 15 ms
     ADC.begin();
     // Reset del ADC
     ADC.sendCommand(RESET_OPCODE_MASK);
-    delay(10);
-
+    delay(1);
     // Asegurarse de que el ADC esté despierto
     ADC.sendCommand(WAKE_OPCODE_MASK);
     
@@ -99,10 +85,11 @@ void SensorManager::beginSensors() {
     ADC.regWrite(PGA_ADDR_MASK, ADS_PGA_BYPASS); // PGA_EN = 0, ganancia ignorada
     
     // Ajustar velocidad de muestreo
-    ADC.regWrite(DATARATE_ADDR_MASK, ADS_DR_4000);
+    ADC.regWrite(DATARATE_ADDR_MASK, ADS_DR_1000);
     
     // Iniciar conversión continua
     ADC.reStart();
+    ////////////////////////////////////////////////////////////////
 #endif
 }
 

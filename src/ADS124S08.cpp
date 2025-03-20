@@ -122,7 +122,7 @@ void ADS124S08::ADS124S08_Reset()
 	if (!_initialized) return;
 					// Esperar 100 mSec
 	_ioExpander->digitalWrite(ADS124S08_RST_PIN, LOW);
-	delay(1);
+	delayMicroseconds(100);
 	_ioExpander->digitalWrite(ADS124S08_RST_PIN, HIGH);
 }
 
