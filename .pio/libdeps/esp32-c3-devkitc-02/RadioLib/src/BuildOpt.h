@@ -14,7 +14,7 @@
  *         SPI - full transcript of all SPI communication
  */
 #if !defined(RADIOLIB_DEBUG_BASIC)
-  #define RADIOLIB_DEBUG_BASIC (1)
+  #define RADIOLIB_DEBUG_BASIC (0)
 #endif
 #if !defined(RADIOLIB_DEBUG_PROTOCOL)
   #define RADIOLIB_DEBUG_PROTOCOL (0)

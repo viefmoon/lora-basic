@@ -5,7 +5,7 @@
 #include <cmath>
 #include "ADS124S08.h"
 #include "AdcUtilities.h"
-#include "NtcManager.h"
+#include "sensors/NtcManager.h"
 
 // Variables globales declaradas en main.cpp
 extern ADS124S08 ADC;
@@ -18,11 +18,8 @@ extern ADS124S08 ADC;
  * @return float Valor de TDS en ppm (partes por millón)
  */
 float ConductivitySensor::convertVoltageToConductivity(float voltage, float tempC) {
-    DEBUG_PRINTLN("Convertir voltaje a conductividad/TDS");
-    DEBUG_PRINTF("Voltaje: %f, Temperatura: %f\n", voltage, tempC);
     float calTemp, coefComp, V1, T1, V2, T2, V3, T3;
     ConfigManager::getConductivityConfig(calTemp, coefComp, V1, T1, V2, T2, V3, T3);
-    DEBUG_PRINTF("CalTemp: %f, CoefComp: %f, V1: %f, T1: %f, V2: %f, T2: %f, V3: %f, T3: %f\n", calTemp, coefComp, V1, T1, V2, T2, V3, T3);
 
     // Si tempC es NAN, usar la temperatura de calibración como valor por defecto
     if (isnan(tempC)) {
@@ -46,9 +43,6 @@ float ConductivitySensor::convertVoltageToConductivity(float voltage, float temp
                     + b * compensatedVoltage 
                     + c;
 
-        DEBUG_PRINTF("Coeficientes: a=%f, b=%f, c=%f\n", a, b, c);
-        DEBUG_PRINTF("Compensación: %f, Voltaje comp: %f\n", compensation, compensatedVoltage);
-        DEBUG_PRINTF("Conductividad: %f\n", conductivity);
         return fmax(conductivity, 0.0);
     }
     else {
@@ -71,7 +65,6 @@ float ConductivitySensor::read() {
     
     // Realizar una única lectura del sensor
     float voltage = AdcUtilities::measureAdcDifferential(muxConfig);
-    DEBUG_PRINTF("Voltaje: %f\n", voltage);
     
     // Verificar si el voltaje es válido
     if (isnan(voltage) || voltage <= 0.0f || voltage >= 2.5f) {

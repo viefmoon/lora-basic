@@ -41,7 +41,7 @@
 #define MAX_LORA_PAYLOAD    200
 
 // Serial
-#define SERIAL_BAUD_RATE        9600
+#define SERIAL_BAUD_RATE        921600
 
 // Deep Sleep
 #define DEFAULT_TIME_TO_SLEEP   30
@@ -108,9 +108,9 @@ const double conversionFactor = (R1 + R2) / R1;
 
 // Configuración default sensores
 #define DEFAULT_SENSOR_CONFIGS { \
-    {"R", "RTD1", RTD, 0, "", true}, \
-    {"D", "DS1", DS18B20, 0, "", true}, \
-    {"I2C", "SHT30", SHT30, 0, "", true} \
+    {"R", "RTD1", RTD, true}, \
+    {"D", "DS1", DS18B20, true}, \
+    {"I2C", "SHT30", SHT30, true} \
 }
 
 #endif
@@ -148,7 +148,7 @@ const double conversionFactor = (R1 + R2) / R1;
 #define MAX_LORA_PAYLOAD    200
 
 // Serial
-#define SERIAL_BAUD_RATE         115200
+#define SERIAL_BAUD_RATE         921600
 
 // Deep Sleep
 #define DEFAULT_TIME_TO_SLEEP   30
@@ -225,12 +225,10 @@ const double conversionFactor = (R1 + R2) / R1;
 #define JSON_DOC_SIZE_LARGE   2048
 
 // Batería
-#define BATTERY_ADC_CHANNEL     1
-#define BATTERY_ADC_PIN         BATTERY_ADC_CHANNEL
 #define POWER_3V3_PIN           P00
 #define POWER_12V_PIN           P01
 #define POWER_2V5_PIN           P02
-#define POWER_STABILIZE_DELAY   20
+#define POWER_STABILIZE_DELAY   1
 
 // ADS124S08
 #define ADS124S08_CS_PIN        P05
@@ -240,7 +238,7 @@ const double conversionFactor = (R1 + R2) / R1;
 #define SPI_ADC_CLOCK           1000000
 
 // FlowSensor
-#define FLOW_SENSOR_PIN 0
+#define FLOW_SENSOR_PIN         0
 
 // Namespaces analógicos
 #define NAMESPACE_NTC100K   "ntc_100k"
@@ -334,6 +332,10 @@ const double conversionFactor = (R1 + R2) / R1;
 
 // Sin sensores Modbus registrados
 #define DEFAULT_MODBUS_SENSOR_CONFIGS { }
+
+// Límites de temperatura NTC para evitar lecturas erróneas cuando esta desconectado
+#define NTC_TEMP_MIN           -20.0   // Temperatura mínima válida en °C
+#define NTC_TEMP_MAX            100.0   // Temperatura máxima válida en °C
 
 #endif
 

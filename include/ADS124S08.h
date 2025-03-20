@@ -40,6 +40,8 @@
 #include "clsPCA9555.h"
 #include "config.h"
 
+#ifdef DEVICE_TYPE_ANALOGIC
+
 /* Start definitions */
 #define NUM_REGISTERS 18
 /*
@@ -437,5 +439,6 @@ class ADS124S08
 		bool _initialized;     // Flag para indicar si se ha inicializado
 };
 
+#endif // DEVICE_TYPE_ANALOGIC
 
 #endif /* ADS124S08_H_ */

@@ -61,7 +61,6 @@ int16_t LoRaManager::lwActivate(LoRaWANNode& node) {
     // Configurar la sesión OTAA
     node.beginOTAA(joinEUI, devEUI, nwkKey, appKey);
 
-    DEBUG_PRINTLN("Recuperando nonces y sesión LoRaWAN");
     store.begin("radiolib");
 
     // Intentar restaurar nonces si existen
@@ -75,7 +74,6 @@ int16_t LoRaManager::lwActivate(LoRaWANNode& node) {
             state = node.setBufferSession(LWsession);
             
             if (state == RADIOLIB_ERR_NONE) {
-                DEBUG_PRINTLN("Sesión restaurada exitosamente - activando");
                 state = node.activateOTAA();
                 
                 if (state == RADIOLIB_LORAWAN_SESSION_RESTORED) {
@@ -91,12 +89,10 @@ int16_t LoRaManager::lwActivate(LoRaWANNode& node) {
     // Si llegamos aquí, necesitamos hacer un nuevo join
     state = RADIOLIB_ERR_NETWORK_NOT_JOINED;
     while (state != RADIOLIB_LORAWAN_NEW_SESSION) {
-        DEBUG_PRINTLN("Iniciando join a la red LoRaWAN");
         state = node.activateOTAA();
 
         // Guardar nonces en flash si el join fue exitoso
         if (state == RADIOLIB_LORAWAN_NEW_SESSION) {
-            DEBUG_PRINTLN("Join exitoso - Guardando nonces en flash");
             uint8_t buffer[RADIOLIB_LORAWAN_NONCES_BUF_SIZE];
             uint8_t *persist = node.getBufferNonces();
             memcpy(buffer, persist, RADIOLIB_LORAWAN_NONCES_BUF_SIZE);
@@ -106,7 +102,6 @@ int16_t LoRaManager::lwActivate(LoRaWANNode& node) {
             delay(1000); // Pausa para estabilización
             node.setDatarate(3);
             
-            DEBUG_PRINTLN("Solicitando DeviceTime...");
             bool macCommandSuccess = node.sendMacCommandReq(RADIOLIB_LORAWAN_MAC_DEVICE_TIME);
             if (macCommandSuccess) {
                 // Enviar mensaje vacío
@@ -403,12 +398,18 @@ void LoRaManager::sendDelimitedPayload(const std::vector<SensorReading>& normalR
     uint8_t downlinkPayload[255];
     size_t downlinkSize = 0;
     
-    int16_t state = node.sendReceive(
+    // int16_t state = node.sendReceive(
+    //     (uint8_t*)payloadBuffer, 
+    //     payloadLength, 
+    //     fPort, 
+    //     downlinkPayload, 
+    //     &downlinkSize
+    // );
+
+    int16_t state = node.uplink(
         (uint8_t*)payloadBuffer, 
         payloadLength, 
-        fPort, 
-        downlinkPayload, 
-        &downlinkSize
+        fPort
     );
     
     if (state == RADIOLIB_ERR_NONE) {

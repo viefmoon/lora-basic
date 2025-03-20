@@ -16,7 +16,7 @@
 #if defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
 #include "ModbusSensorManager.h"
 #ifdef DEVICE_TYPE_ANALOGIC
-#include "NtcManager.h"
+#include "sensors/NtcManager.h"
 #endif
 #endif
 

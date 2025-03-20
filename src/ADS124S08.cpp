@@ -30,6 +30,11 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * --/COPYRIGHT--*/
 
+#include "ADS124S08.h"
+#include "debug.h"
+
+#ifdef DEVICE_TYPE_ANALOGIC
+
 /*
  * This class is based on the ADS124S08.c provided by TI and adapted for use with
  * Particle Photon and other Arduino-like MCU's.
@@ -39,8 +44,6 @@
  * from the naming, but according to the datasheet CS is active LOW.
  */
 
-#include "ADS124S08.h"
-#include "debug.h"
 /*
  * Writes the nCS pin low and waits a while for the device to finish working before
  * handing control back to the caller for a SPI transfer.
@@ -117,13 +120,10 @@ void ADS124S08::init()
 void ADS124S08::ADS124S08_Reset()
 {
 	if (!_initialized) return;
-	
-	_ioExpander->digitalWrite(ADS124S08_RST_PIN, HIGH);
-	delay(100);					// Esperar 100 mSec
+					// Esperar 100 mSec
 	_ioExpander->digitalWrite(ADS124S08_RST_PIN, LOW);
-	delay(100);
+	delay(1);
 	_ioExpander->digitalWrite(ADS124S08_RST_PIN, HIGH);
-	delay(100);
 }
 
 void ADS124S08::begin()
@@ -454,3 +454,5 @@ int ADS124S08::dataRead(uint8_t *dStatus, uint8_t *dData, uint8_t *dCRC)
 	releaseChipSelect();
 	return iData;
 }
+
+#endif // DEVICE_TYPE_ANALOGIC

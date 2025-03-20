@@ -71,7 +71,6 @@ float HDS10Sensor::read() {
     
     // Usar AdcUtilities para leer el voltaje diferencial
     float voltage = AdcUtilities::measureAdcDifferential(muxConfig);
-    DEBUG_PRINTF("voltage: %f\n", voltage);
     
     // Verificar si el voltaje está en rango válido
     if (voltage <= 0.0f || voltage >= 2.5f) {
@@ -97,8 +96,6 @@ float HDS10Sensor::read() {
     if (sensorR < 0.0f) {
         return NAN; // Valor no válido
     }
-    
-    DEBUG_PRINTF("sensorR: %f\n", sensorR);
     
     // Usar la función de conversión basada en interpolación logarítmica
     float percentage = convertResistanceToHumidity(sensorR);

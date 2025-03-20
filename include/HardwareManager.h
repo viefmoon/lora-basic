@@ -22,15 +22,11 @@ public:
      * @param ioExpander Referencia al expansor de I/O
      * @param powerManager Referencia al gestor de energía
      * @param sht30Sensor Referencia al sensor SHT30
+     * @param spi Referencia a la interfaz SPI
      * @return true si la inicialización fue exitosa, false en caso contrario
      */
-    static bool initHardware(PCA9555& ioExpander, PowerManager& powerManager, SensirionI2cSht3x& sht30Sensor);
+    static bool initHardware(PCA9555& ioExpander, PowerManager& powerManager, SensirionI2cSht3x& sht30Sensor, SPIClass& spi);
 
-    /**
-     * @brief Configura los pines SPI para los diferentes periféricos
-     * @param spi Referencia al objeto SPI
-     */
-    static void initSPI(SPIClass& spi);
 
     /**
      * @brief Prepara el hardware para entrar en modo deep sleep

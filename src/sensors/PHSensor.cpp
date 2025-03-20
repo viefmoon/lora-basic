@@ -5,7 +5,7 @@
 #include <cmath>
 #include "ADS124S08.h"
 #include "AdcUtilities.h"
-#include "NtcManager.h"
+#include "sensors/NtcManager.h"
 
 // Variables globales declaradas en main.cpp
 extern ADS124S08 ADC;
@@ -60,10 +60,6 @@ float PHSensor::convertVoltageToPH(float voltage, float tempC) {
     // Limitar el pH a un rango físicamente posible (0-14)
     pH = constrain(pH, 0.0, 14.0);
 
-    DEBUG_PRINTF("pH Valores de calibración: V1=%f, T1=%f, V2=%f, T2=%f, V3=%f, T3=%f\n", 
-               V1, T1, V2, T2, V3, T3);
-    DEBUG_PRINTF("pH Cálculos: S_CAL=%f, E0=%f, S_T=%f\n", S_CAL, E0, S_T);
-
     return pH;
 }
 
@@ -81,22 +77,17 @@ float PHSensor::read() {
     
     // Realizar una única lectura del sensor
     float voltage = AdcUtilities::measureAdcDifferential(muxConfig);
-    DEBUG_PRINTF("Voltaje del sensor de pH: %f\n", voltage);
     
     // Verificar si el voltaje es válido
     if (isnan(voltage) || voltage < -2.5f || voltage > 2.5f) {
-        DEBUG_PRINTLN("Voltaje fuera de rango para el sensor de pH");
         return NAN;
     }
     
     // Obtener temperatura únicamente del sensor NTC10K
     float waterTemp = NtcManager::readNtc10kTemperature();
-    DEBUG_PRINTF("Temperatura agua (NTC10K): %f°C\n", waterTemp);
     
     // Convertir a pH con compensación de temperatura
     float pHValue = convertVoltageToPH(voltage, waterTemp);
-    
-    DEBUG_PRINTF("Valor pH: %f (temp agua: %f°C)\n", pHValue, waterTemp);
     
     return pHValue;
 }

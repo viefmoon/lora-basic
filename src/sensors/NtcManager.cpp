@@ -1,7 +1,8 @@
-#include "NtcManager.h"
+#include "sensors/NtcManager.h"
 #include <cmath>  // Para fabs() y otras funciones matemáticas
 #include "config_manager.h"
 #include "debug.h"
+#include "config.h"  // Para acceder a NTC_TEMP_MIN y NTC_TEMP_MAX
 
 #ifdef DEVICE_TYPE_ANALOGIC
 #include "ADS124S08.h"
@@ -113,7 +114,6 @@ double NtcManager::readNtc100kTemperature(const char* configKey) {
     // Obtener calibración NTC100K de la configuración
     double t1=25.0, r1=100000.0, t2=35.0, r2=64770.0, t3=45.0, r3=42530.0;
     ConfigManager::getNTC100KConfig(t1, r1, t2, r2, t3, r3);
-    DEBUG_PRINTF("NTC100K: t1=%f, r1=%f, t2=%f, r2=%f, t3=%f, r3=%f\n", t1, r1, t2, r2, t3, r3);
 
     // Pasar °C a Kelvin
     double T1K = t1 + 273.15;
@@ -123,7 +123,6 @@ double NtcManager::readNtc100kTemperature(const char* configKey) {
     // Calcular coeficientes Steinhart-Hart
     double A=0, B=0, C=0;
     calculateSteinhartHartCoeffs(T1K, r1, T2K, r2, T3K, r3, A, B, C);
-    DEBUG_PRINTF("NTC100K: A=%f, B=%f, C=%f\n", A, B, C);
     
     // Elegir canal según sensorId: "NTC1" => AIN1+/AIN0-, "NTC2" => AIN3+/AIN2-
     uint8_t muxConfig = 0; 
@@ -138,7 +137,6 @@ double NtcManager::readNtc100kTemperature(const char* configKey) {
 
     // Medir voltaje diferencial
     float diffVoltage = AdcUtilities::measureAdcDifferential(muxConfig);
-    DEBUG_PRINTF("NTC100K: diffVoltage=%f\n", diffVoltage);
     if (isnan(diffVoltage)) {
         return NAN;
     }
@@ -152,6 +150,11 @@ double NtcManager::readNtc100kTemperature(const char* configKey) {
     // Usar Steinhart-Hart para calcular la temperatura en °C
     double tempC = steinhartHartTemperature(Rntc, A, B, C);
     
+    // Validar que el valor de temperatura está dentro de los límites aceptables
+    if (isnan(tempC) || tempC < NTC_TEMP_MIN || tempC > NTC_TEMP_MAX) {
+        return NAN;
+    }
+    
     return tempC;
 }
 
@@ -160,7 +163,6 @@ double NtcManager::readNtc10kTemperature() {
     // Usando valores por defecto para un NTC10K común
     double t1=25.0, r1=10000.0, t2=50.0, r2=3893.0, t3=85.0, r3=1218.0;
     ConfigManager::getNTC10KConfig(t1, r1, t2, r2, t3, r3);
-    DEBUG_PRINTF("NTC10K: t1=%f, r1=%f, t2=%f, r2=%f, t3=%f, r3=%f\n", t1, r1, t2, r2, t3, r3);
 
     // Pasar °C a Kelvin
     double T1K = t1 + 273.15;
@@ -170,14 +172,12 @@ double NtcManager::readNtc10kTemperature() {
     // Calcular coeficientes Steinhart-Hart
     double A=0, B=0, C=0;
     calculateSteinhartHartCoeffs(T1K, r1, T2K, r2, T3K, r3, A, B, C);
-    DEBUG_PRINTF("NTC10K: A=%f, B=%f, C=%f\n", A, B, C);
 
     // NTC3 está en el canal AIN11 con AINCOM
     uint8_t muxConfig = ADS_P_AIN11 | ADS_N_AIN8;
     
     // Medir voltaje single-ended
     float voltage = AdcUtilities::measureAdcDifferential(muxConfig);
-    DEBUG_PRINTF("NTC10K: voltage=%f\n", voltage);
     if (isnan(voltage)) {
         return NAN;
     }
@@ -195,6 +195,11 @@ double NtcManager::readNtc10kTemperature() {
 
     // Usar Steinhart-Hart para calcular la temperatura en °C
     double tempC = steinhartHartTemperature(Rntc, A, B, C);
+    
+    // Validar que el valor de temperatura está dentro de los límites aceptables
+    if (isnan(tempC) || tempC < NTC_TEMP_MIN || tempC > NTC_TEMP_MAX) {
+        return NAN;
+    }
     
     return tempC;
 }
