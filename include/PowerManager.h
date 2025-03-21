@@ -10,7 +10,7 @@ private:
 
 public:
     PowerManager(PCA9555& expander);
-    bool begin();
+    void begin();
 
     // Método común para todos los dispositivos
     void power3V3On();

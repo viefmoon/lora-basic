@@ -14,7 +14,7 @@
 #include "WProgram.h"
 #endif
 
-#define DEBUG 1
+#define DEBUG 0
 
 #include "config.h"
 

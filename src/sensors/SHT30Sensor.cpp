@@ -10,8 +10,7 @@ void SHT30Sensor::read(float &outTemp, float &outHum) {
     float temperature = 0.0f;
     float humidity = 0.0f;
 
-    int16_t error = sht30Sensor.measureSingleShot(REPEATABILITY_HIGH, false, temperature, humidity);
-    delay(20);
+    int16_t error = sht30Sensor.measureSingleShot(REPEATABILITY_LOW, false, temperature, humidity);
     if (error != NO_ERROR) {
         outTemp = NAN;
         outHum = NAN;

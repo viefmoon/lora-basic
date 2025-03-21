@@ -63,9 +63,7 @@ void SensorManager::beginSensors() {
     // TIEMPO ejecución ≈ 65 ms
     // Inicializar DS18B20
     dallasTemp.begin();
-    // Lectura inicial
     dallasTemp.requestTemperatures();
-    dallasTemp.getTempCByIndex(0);
     ////////////////////////////////////////////////////////////////
 #endif
 
@@ -85,26 +83,11 @@ void SensorManager::beginSensors() {
     ADC.regWrite(PGA_ADDR_MASK, ADS_PGA_BYPASS); // PGA_EN = 0, ganancia ignorada
     
     // Ajustar velocidad de muestreo
-    ADC.regWrite(DATARATE_ADDR_MASK, ADS_DR_1000);
+    ADC.regWrite(DATARATE_ADDR_MASK, ADS_DR_4000); //EL PCA NO MANEJA DR MAS BAJOS
     
     // Iniciar conversión continua
     ADC.reStart();
     ////////////////////////////////////////////////////////////////
-#endif
-}
-
-void SensorManager::initializeSPISSPins() {
-    // Inicializar SS del LORA conectado directamente
-    pinMode(LORA_NSS_PIN, OUTPUT);
-    digitalWrite(LORA_NSS_PIN, HIGH);
-
-    // Inicializar SS conectados al expansor
-    ioExpander.pinMode(PT100_CS_PIN, OUTPUT); // ss de p100
-    ioExpander.digitalWrite(PT100_CS_PIN, HIGH);
-
-#ifdef DEVICE_TYPE_ANALOGIC
-    ioExpander.pinMode(ADS124S08_CS_PIN, OUTPUT); // ss del adc
-    ioExpander.digitalWrite(ADS124S08_CS_PIN, HIGH);
 #endif
 }
 

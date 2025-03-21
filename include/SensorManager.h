@@ -45,9 +45,6 @@ class SensorManager {
     // Inicializa pines, periféricos (ADC, RTD, etc.), OneWire, etc.
     static void beginSensors();
 
-    // Inicializa los pines de selección SPI (SS)
-    static void initializeSPISSPins();
-
     // Devuelve la lectura (o lecturas) de un sensor NO-Modbus según su configuración.
     static SensorReading getSensorReading(const SensorConfig& cfg);
     

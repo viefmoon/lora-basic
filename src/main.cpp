@@ -96,15 +96,12 @@ void setup() {
     // Inicialización de hardware
     if (!HardwareManager::initHardware(ioExpander, powerManager, sht30Sensor, spi)) {
         DEBUG_PRINTLN("Error en la inicialización del hardware");
+        SleepManager::goToDeepSleep(timeToSleep, powerManager, ioExpander, &radio, node, LWsession, spi);
     }
 
     // Configuración de pines de modo config
     pinMode(CONFIG_PIN, INPUT);
     ioExpander.pinMode(CONFIG_LED_PIN, OUTPUT);
-
-    // Inicializar los pines de selección SPI (SS)
-    SensorManager::initializeSPISSPins();
-
 
     // Modo configuración BLE
     if (BLEHandler::checkConfigMode(ioExpander)) {
@@ -116,33 +113,24 @@ void setup() {
         DEBUG_PRINTLN("No se pudo encontrar RTC");
     }
 
-    //TIEMPO TRASCURRIDO HASTA EL MOMENTO ≈ 14 ms
     // Inicializar sensores
     SensorManager::beginSensors();
 
-    DEBUG_PRINTF("Tiempo transcurrido hardware: %lu ms\n", millis() - setupStartTime);
-    DEBUG_PRINTLN("Iniciando configuración de pines");
-    DEBUG_PRINTF("Tiempo transcurrido pines: %lu ms\n", millis() - setupStartTime);
-    
+    //TIEMPO TRASCURRIDO HASTA EL MOMENTO ≈ 98 ms
     // Inicializar radio LoRa
     int16_t state = radio.begin();
     if (state != RADIOLIB_ERR_NONE) {
         DEBUG_PRINTF("Error iniciando radio: %d\n", state);
+        SleepManager::goToDeepSleep(timeToSleep, powerManager, ioExpander, &radio, node, LWsession, spi);
     }
 
     // Activar LoRaWAN
     state = LoRaManager::lwActivate(node);
-    if (state != RADIOLIB_LORAWAN_NEW_SESSION && state != RADIOLIB_LORAWAN_SESSION_RESTORED) {
-        DEBUG_PRINTF("Error activando LoRaWAN: %d\n", state);
-        DEBUG_PRINTLN("Llamando a goToDeepSleep...");
+    if (state != RADIOLIB_LORAWAN_NEW_SESSION && 
+        state != RADIOLIB_LORAWAN_SESSION_RESTORED) {
+        DEBUG_PRINTF("Error activando LoRaWAN o sincronizando RTC: %d\n", state);
         SleepManager::goToDeepSleep(timeToSleep, powerManager, ioExpander, &radio, node, LWsession, spi);
-        return;
     }
-
-    // Ajustar datarate
-    LoRaManager::setDatarate(node, 3);
-    // Debug del tiempo transcurrido antes de enviar datos
-    DEBUG_PRINTF("Tiempo transcurrido al final de setup: %lu ms\n", millis() - setupStartTime);
 }
 
 //--------------------------------------------------------------------------------------------
@@ -159,17 +147,11 @@ void loop() {
 #if defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
     std::vector<ModbusSensorReading> modbusReadings;
     SensorManager::getAllSensorReadings(normalReadings, modbusReadings);
-    
-    // Debug del tiempo transcurrido antes de enviar datos
-    DEBUG_PRINTF("Tiempo transcurrido antes de enviar datos: %lu ms\n", millis() - setupStartTime);
-    
+
     // Usar el nuevo formato delimitado en lugar de JSON
     LoRaManager::sendDelimitedPayload(normalReadings, modbusReadings, node, deviceId, stationId, rtc);
 #else
     SensorManager::getAllSensorReadings(normalReadings);
-    
-    // Debug del tiempo transcurrido antes de enviar datos
-    DEBUG_PRINTF("Tiempo transcurrido antes de enviar datos: %lu ms\n", millis() - setupStartTime);
     
     // Usar el nuevo formato delimitado en lugar de JSON
     LoRaManager::sendDelimitedPayload(normalReadings, node, deviceId, stationId, rtc);
@@ -178,8 +160,7 @@ void loop() {
     // Calcular y mostrar el tiempo transcurrido antes de dormir
     unsigned long elapsedTime = millis() - setupStartTime;
     DEBUG_PRINTF("Tiempo transcurrido antes de sleep: %lu ms\n", elapsedTime);
-    delay(100);
-    
+
     // Dormir
     SleepManager::goToDeepSleep(timeToSleep, powerManager, ioExpander, &radio, node, LWsession, spi);
 }

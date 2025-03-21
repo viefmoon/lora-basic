@@ -337,14 +337,13 @@ int ADS124S08::rData(uint8_t *dStatus, uint8_t *dData, uint8_t *dCRC)
 	
 	// Esperar a que el pin DRDY esté en LOW (datos disponibles)
 	// DRDY es activo bajo, por lo que cuando está en LOW, los datos están listos
-	uint32_t timeout = millis() + 1000; // Timeout de 1 segundo
+	uint32_t timeout = millis() + 100; // Timeout de 100 ms
 	while (_ioExpander->digitalRead(ADS124S08_DRDY_PIN) == HIGH) {
 		// Si se supera el timeout, retornar error
 		if (millis() > timeout) {
-			DEBUG_PRINTLN("Error: Timeout esperando datos del ADC en rData");
 			return -1;
 		}
-		delay(1); // Pequeña pausa para no saturar el CPU
+		delayMicroseconds(100); // Pequeña pausa para no saturar el CPU
 	}
 	
 	int result = -1;
@@ -404,14 +403,13 @@ int ADS124S08::dataRead(uint8_t *dStatus, uint8_t *dData, uint8_t *dCRC)
 	
 	// Esperar a que el pin DRDY esté en LOW (datos disponibles)
 	// DRDY es activo bajo, por lo que cuando está en LOW, los datos están listos
-	uint32_t timeout = millis() + 1000; // Timeout de 1 segundo
+	uint32_t timeout = millis() + 100; // Timeout de 100 ms
 	while (_ioExpander->digitalRead(ADS124S08_DRDY_PIN) == HIGH) {
 		// Si se supera el timeout, retornar error
 		if (millis() > timeout) {
-			DEBUG_PRINTLN("Error: Timeout esperando datos del ADC");
 			return -1;
 		}
-		delay(1); // Pequeña pausa para no saturar el CPU
+		delayMicroseconds(100); // Pequeña pausa para no saturar el CPU
 	}
 	
 	uint8_t xcrc;

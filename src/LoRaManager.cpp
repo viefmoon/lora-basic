@@ -29,7 +29,6 @@ int16_t LoRaManager::begin(SX1262* radio, const LoRaWANBand_t* region, uint8_t s
     radioModule = radio;
     int16_t state = radioModule->begin();
     if (state != RADIOLIB_ERR_NONE) {
-        DEBUG_PRINTF("Error iniciando radio: %d\n", state);
         return state;
     }
     
@@ -49,7 +48,6 @@ int16_t LoRaManager::lwActivate(LoRaWANNode& node) {
     uint64_t joinEUI = 0, devEUI = 0;
     if (!parseEUIString(loraConfig.joinEUI.c_str(), &joinEUI) ||
         !parseEUIString(loraConfig.devEUI.c_str(), &devEUI)) {
-        DEBUG_PRINTLN("Error al parsear EUIs");
         return state;
     }
     
@@ -102,41 +100,85 @@ int16_t LoRaManager::lwActivate(LoRaWANNode& node) {
             delay(1000); // Pausa para estabilización
             node.setDatarate(3);
             
-            bool macCommandSuccess = node.sendMacCommandReq(RADIOLIB_LORAWAN_MAC_DEVICE_TIME);
-            if (macCommandSuccess) {
-                // Enviar mensaje vacío
-                uint8_t fPort = 1;
-                uint8_t downlinkPayload[255];
-                size_t downlinkSize = 0;
+            // Variable para controlar el número de intentos
+            int rtcAttempts = 0;
+            bool rtcUpdated = false;
+            const int maxAttempts = 3; // Máximo número de intentos para actualizar RTC
+            
+            // Intentar solicitar y actualizar el tiempo del RTC hasta 3 veces
+            while (!rtcUpdated && rtcAttempts < maxAttempts) {
+                rtcAttempts++;
+                DEBUG_PRINTF("Intento %d de actualización de RTC\n", rtcAttempts);
                 
-                int16_t rxState = node.sendReceive(nullptr, 0, fPort, downlinkPayload, &downlinkSize, true);
-                if (rxState == RADIOLIB_ERR_NONE) {
-                    // Obtener y procesar DeviceTime
-                    uint32_t unixEpoch;
-                    uint8_t fraction;
-                    int16_t dtState = node.getMacDeviceTimeAns(&unixEpoch, &fraction, true);
-                    if (dtState == RADIOLIB_ERR_NONE) {
-                        DEBUG_PRINTF("DeviceTime recibido: epoch = %lu s, fraction = %u\n", unixEpoch, fraction);
-                        // Convertir el tiempo unix a DateTime
-                        DateTime serverTime(unixEpoch);
-                        
-                        // Ajustar el RTC con el tiempo del servidor
-                        rtc.adjust(serverTime);
-                        
-                        // Verificar si se ajustó correctamente
-                        if (abs((int32_t)rtc.now().unixtime() - (int32_t)unixEpoch) < 10) {
-                            DEBUG_PRINTLN("RTC actualizado exitosamente con tiempo del servidor");
+                bool macCommandSuccess = node.sendMacCommandReq(RADIOLIB_LORAWAN_MAC_DEVICE_TIME);
+                if (macCommandSuccess) {
+                    // Enviar mensaje vacío
+                    uint8_t fPort = 1;
+                    uint8_t downlinkPayload[255];
+                    size_t downlinkSize = 0;
+                    
+                    int16_t rxState = node.sendReceive(nullptr, 0, fPort, downlinkPayload, &downlinkSize, true);
+                    if (rxState == RADIOLIB_ERR_NONE) {
+                        // Obtener y procesar DeviceTime
+                        uint32_t unixEpoch;
+                        uint8_t fraction;
+                        int16_t dtState = node.getMacDeviceTimeAns(&unixEpoch, &fraction, true);
+                        if (dtState == RADIOLIB_ERR_NONE) {
+                            DEBUG_PRINTF("DeviceTime recibido: epoch = %lu s, fraction = %u\n", unixEpoch, fraction);
+                            // Convertir el tiempo unix a DateTime
+                            DateTime serverTime(unixEpoch);
+                            
+                            // Ajustar el RTC con el tiempo del servidor
+                            rtc.adjust(serverTime);
+                            
+                            // Verificar si se ajustó correctamente
+                            if (abs((int32_t)rtc.now().unixtime() - (int32_t)unixEpoch) < 10) {
+                                DEBUG_PRINTLN("RTC actualizado exitosamente con tiempo del servidor");
+                                rtcUpdated = true; // Marca como actualizado para salir del bucle
+                            } else {
+                                DEBUG_PRINTLN("Error al actualizar RTC con tiempo del servidor");
+                                // Si estamos en el último intento, continuamos de todas formas
+                                if (rtcAttempts >= maxAttempts) {
+                                    DEBUG_PRINTLN("Agotados los intentos de actualización de RTC");
+                                } else {
+                                    delay(1000); // Esperar un segundo antes del siguiente intento
+                                }
+                            }
                         } else {
-                            DEBUG_PRINTLN("Error al actualizar RTC con tiempo del servidor");
+                            DEBUG_PRINTF("Error al obtener DeviceTime: %d\n", dtState);
+                            // Si estamos en el último intento, continuamos de todas formas
+                            if (rtcAttempts >= maxAttempts) {
+                                DEBUG_PRINTLN("Agotados los intentos de actualización de RTC");
+                            } else {
+                                delay(1000); // Esperar un segundo antes del siguiente intento
+                            }
                         }
                     } else {
-                        DEBUG_PRINTF("Error al obtener DeviceTime: %d\n", dtState);
+                        DEBUG_PRINTF("Error al recibir respuesta DeviceTime: %d\n", rxState);
+                        // Si estamos en el último intento, continuamos de todas formas
+                        if (rtcAttempts >= maxAttempts) {
+                            DEBUG_PRINTLN("Agotados los intentos de actualización de RTC");
+                        } else {
+                            delay(1000); // Esperar un segundo antes del siguiente intento
+                        }
                     }
                 } else {
-                    DEBUG_PRINTF("Error al recibir respuesta DeviceTime: %d\n", rxState);
+                    DEBUG_PRINTLN("Error al solicitar DeviceTime: comando no pudo ser encolado");
+                    // Si estamos en el último intento, continuamos de todas formas
+                    if (rtcAttempts >= maxAttempts) {
+                        DEBUG_PRINTLN("Agotados los intentos de actualización de RTC");
+                    } else {
+                        delay(1000); // Esperar un segundo antes del siguiente intento
+                    }
                 }
-            } else {
-                DEBUG_PRINTLN("Error al solicitar DeviceTime: comando no pudo ser encolado");
+            }
+            
+            // Si no se pudo actualizar el RTC después de los intentos máximos, retornar error
+            if (!rtcUpdated) {
+                DEBUG_PRINTLN("No se pudo actualizar el RTC después de los intentos máximos, entrando en deep sleep");
+                bootCountSinceUnsuccessfulJoin = 0;
+                store.end();
+                return RADIOLIB_ERR_RTC_SYNC_FAILED; // Error personalizado para indicar fallo en sincronización RTC
             }
             
             bootCountSinceUnsuccessfulJoin = 0;
@@ -397,6 +439,43 @@ void LoRaManager::sendDelimitedPayload(const std::vector<SensorReading>& normalR
     uint8_t fPort = 1;
     uint8_t downlinkPayload[255];
     size_t downlinkSize = 0;
+
+    /*
+    Lista de Data Rates (DR) para LoRaWAN US915
+
+    - Cada DR define un conjunto específico de parámetros: 
+        - SF (Spreading Factor): Cuanto mayor es, más alcance tiene pero menor velocidad de transmisión.
+        - BW (Bandwidth): Mayor ancho de banda significa mayor velocidad pero menor alcance.
+        - CR (Coding Rate): Relación de corrección de errores.
+        - Payload Máximo: Tamaño máximo de datos en bytes que se pueden enviar en una sola transmisión.
+
+    - NOTA: DR5, DR6 y DR7 no están definidos en US915.
+
+    Índice | SF  | BW   | CR   | Payload Máximo | Comentario
+    -------|-----|------|------|---------------|------------------------------------
+    DR0    | SF10 | 125kHz | 4/5 | 19 bytes      | Mayor alcance, menor velocidad.
+    DR1    | SF9  | 125kHz | 4/5 | 61 bytes      | Menor alcance, más velocidad que DR0.
+    DR2    | SF8  | 125kHz | 4/5 | 133 bytes     | Velocidad media, menor alcance que DR1.
+    DR3    | SF7  | 125kHz | 4/5 | 250 bytes     | Mayor velocidad en 125kHz, menor alcance.
+    DR4    | SF8  | 500kHz | 4/5 | 250 bytes     | Mayor BW para mejorar la velocidad.
+    DR5    | N/A  | N/A    | N/A | No definido   | No definido en US915.
+    DR6    | N/A  | N/A    | N/A | No definido   | No definido en US915.
+    DR7    | N/A  | N/A    | N/A | No definido   | No definido en US915.
+    DR8    | SF12 | 500kHz | 4/5 | 41 bytes      | Mayor alcance en 500kHz, menor velocidad.
+    DR9    | SF11 | 500kHz | 4/5 | 117 bytes     | Más velocidad que DR8, menos alcance.
+    DR10   | SF10 | 500kHz | 4/5 | 230 bytes     | Más velocidad que DR9.
+    DR11   | SF9  | 500kHz | 4/5 | 230 bytes     | Velocidad media en 500kHz.
+    DR12   | SF8  | 500kHz | 4/5 | 230 bytes     | Más velocidad que DR11.
+    DR13   | SF7  | 500kHz | 4/5 | 230 bytes     | Mayor velocidad en 500kHz, menor alcance.
+    DR14   | N/A  | N/A    | N/A | No definido   | No definido en US915.
+
+    - DR0 a DR3 se usan para **uplink** en los 64 canales de 125kHz.
+    - DR4 se usa para **uplink** en los 8 canales de 500kHz.
+    - DR8 a DR13 se usan para **downlink** en los 8 canales de 500kHz.
+    - El payload máximo puede verse afectado por la opción **FOpt** en el MAC layer.
+    */
+    LoRaManager::setDatarate(node, 3);
+
     
     // int16_t state = node.sendReceive(
     //     (uint8_t*)payloadBuffer, 

@@ -78,7 +78,6 @@ PCA9555::PCA9555(uint8_t address, int sda, int scl, int interruptPin) {
 // Checks if PCA9555 is responsive. Refer to Wire.endTransmission() from Arduino for details.
 bool PCA9555::begin() {
 
-    
     // Intentar varias veces la inicialización
     for (int intento = 0; intento < 3; intento++) {
         Wire.beginTransmission(_address);
@@ -103,18 +102,6 @@ bool PCA9555::begin() {
         }
         
         delayMicroseconds(100);  // Esperar antes del siguiente intento
-    }
-
-    // Solo mostrar error después de todos los intentos fallidos
-    DEBUG_PRINT("Error al inicializar PCA9555 en la dirección 0x");
-    DEBUG_PRINT(_address, HEX);
-    DEBUG_PRINT(": ");
-    switch (_error) {
-        case 1: DEBUG_PRINTLN("Datos demasiado largos para el búfer de envío"); break;
-        case 2: DEBUG_PRINTLN("Dirección NACK recibida en la transmisión"); break;
-        case 3: DEBUG_PRINTLN("Datos NACK recibidos en la transmisión"); break;
-        case 4: DEBUG_PRINTLN("Otro error"); break;
-        default: DEBUG_PRINTLN("Error desconocido"); break;
     }
     
     return false;

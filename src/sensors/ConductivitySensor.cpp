@@ -46,7 +46,6 @@ float ConductivitySensor::convertVoltageToConductivity(float voltage, float temp
         return fmax(conductivity, 0.0);
     }
     else {
-        DEBUG_PRINTLN("Error: Determinante cercano a cero en cálculo de conductividad");
         return NAN;
     }
 }

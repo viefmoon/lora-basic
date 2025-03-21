@@ -27,12 +27,11 @@ public:
      */
     static bool initHardware(PCA9555& ioExpander, PowerManager& powerManager, SensirionI2cSht3x& sht30Sensor, SPIClass& spi);
 
-
     /**
-     * @brief Prepara el hardware para entrar en modo deep sleep
-     * @param ioExpander Referencia al expansor de I/O
+     * @brief Inicializa los pines de selección SPI (SS)
      */
-    static void prepareHardwareForSleep(PCA9555& ioExpander);
+    static void initializeSPISSPins();
+
 };
 
 #endif // HARDWARE_MANAGER_H

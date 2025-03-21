@@ -3,7 +3,7 @@
 PowerManager::PowerManager(PCA9555& expander) : ioExpander(expander) {
 }
 
-bool PowerManager::begin() {
+void PowerManager::begin() {
     // Configurar pines como salidas
     ioExpander.pinMode(POWER_3V3_PIN, OUTPUT);
     
@@ -17,7 +17,6 @@ bool PowerManager::begin() {
     
     // Asegurar que todas las fuentes están apagadas al inicio
     allPowerOff();
-    return true;
 }
 
 void PowerManager::power3V3On() {

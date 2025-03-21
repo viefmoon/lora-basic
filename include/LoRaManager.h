@@ -17,6 +17,9 @@
 #include <RTClib.h>
 #include "SensorManager.h"
 
+// Código de error personalizado para fallo en sincronización RTC
+#define RADIOLIB_ERR_RTC_SYNC_FAILED -5000
+
 class LoRaManager {
 public:
     /**
