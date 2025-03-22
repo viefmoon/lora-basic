@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include <vector>
-#include "sensor_constants.h"
+#include "modbus_sensor_constants.h"
 #include "config.h"
 
 /**

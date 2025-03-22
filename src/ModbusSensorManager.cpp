@@ -6,7 +6,7 @@
 #include "ModbusMaster.h"
 #include "debug.h"     // Para DEBUG_END
 #include "sensor_types.h" // Para ENV4Keys
-#include "sensor_constants.h" // Para SensorKeys
+#include "modbus_sensor_constants.h" // Para claves de sensores Modbus
 #include "utilities.h"
 #include <string.h>
 
@@ -87,10 +87,10 @@ ModbusSensorReading ModbusSensorManager::readEnvSensor(const ModbusSensorConfig 
 
     // Definir las claves para cada valor usando las constantes
     const char* keys[] = {
-        ENV4_KEY_HUMIDITY,
-        ENV4_KEY_TEMPERATURE,
-        ENV4_KEY_PRESSURE,
-        ENV4_KEY_ILLUMINATION
+        MODBUS_ENV4_KEY_HUMIDITY,
+        MODBUS_ENV4_KEY_TEMPERATURE,
+        MODBUS_ENV4_KEY_PRESSURE,
+        MODBUS_ENV4_KEY_ILLUMINATION
     };
     
     bool ok = readHoldingRegisters(cfg.address, startReg, numRegs, rawData);

@@ -11,7 +11,7 @@
 #include <Preferences.h>
 #include "config_manager.h"
 #include "debug.h"
-#include "sensor_constants.h"  // Para tiempos de estabilización
+#include "modbus_sensor_constants.h"  // Para tiempos de estabilización de sensores Modbus
 #include "utilities.h"
 
 #ifdef DEVICE_TYPE_ANALOGIC
@@ -262,7 +262,7 @@ void SensorManager::getAllSensorReadings(std::vector<SensorReading>& normalReadi
             // Obtener el tiempo de estabilización según el tipo de sensor
             switch (sensor.type) {
                 case ENV4:
-                    sensorStabilizationTime = SENSOR_MODBUS_ENV4_STABILIZATION_TIME;
+                    sensorStabilizationTime = MODBUS_ENV4_STABILIZATION_TIME;
                     break;
                 // Añadir casos para otros tipos de sensores Modbus con sus respectivos tiempos
                 default:

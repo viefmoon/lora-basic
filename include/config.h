@@ -2,9 +2,9 @@
 #define CONFIG_H
 
 // Descomentar solo UNO de los siguientes
-// #define DEVICE_TYPE_BASIC
+//#define DEVICE_TYPE_BASIC
 #define DEVICE_TYPE_ANALOGIC
-// #define DEVICE_TYPE_MODBUS
+//#define DEVICE_TYPE_MODBUS
 
 // Configuración de depuración - Comentar para deshabilitar mensajes de depuración
 #define DEBUG_ENABLED
@@ -335,7 +335,10 @@ const double conversionFactor = (R1 + R2) / R1;
 }
 
 // Sin sensores Modbus registrados
-#define DEFAULT_MODBUS_SENSOR_CONFIGS { }
+#define DEFAULT_MODBUS_SENSOR_CONFIGS { \
+    {"ModbusEnv1", ENV4, 1, false} \
+}
+
 
 // Límites de temperatura NTC para evitar lecturas erróneas cuando esta desconectado
 #define NTC_TEMP_MIN           -20.0   // Temperatura mínima válida en °C
@@ -461,9 +464,9 @@ const double conversionFactor = (R1 + R2) / R1;
 
 // Configuración default sensores
 #define DEFAULT_SENSOR_CONFIGS { \
-    {"R", "RTD1", RTD, 0, "", true}, \
-    {"D", "DS1", DS18B20, 0, "", true}, \
-    {"I2C", "SHT30", SHT30, 0, "", true} \
+    {"R", "RTD1",  RTD, true}, \
+    {"D", "DS1",   DS18B20, false}, \
+    {"I2C", "SHT30", SHT30, false} \
 }
 
 // Sin sensores Modbus registrados

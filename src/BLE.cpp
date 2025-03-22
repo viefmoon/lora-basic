@@ -9,18 +9,19 @@
 bool BLEHandler::isConnected = false;
 unsigned long BLEHandler::connectionStartTime = 0;
 BLEServer* BLEHandler::pBLEServer = nullptr;
+bool BLEHandler::shouldExitOnDisconnect = false;
 
 // Implementación de los métodos de la clase ServerCallbacks
 void BLEHandler::ServerCallbacks::onConnect(BLEServer* pServer) {
-    DEBUG_PRINTLN(F("BLE Cliente conectado"));
     BLEHandler::isConnected = true;
     BLEHandler::connectionStartTime = millis();
+    BLEHandler::shouldExitOnDisconnect = true; // Establecer que debemos salir al desconectar
 }
 
 void BLEHandler::ServerCallbacks::onDisconnect(BLEServer* pServer) {
-    DEBUG_PRINTLN(F("BLE Cliente desconectado, reiniciando publicidad..."));
     BLEHandler::isConnected = false;
     pServer->getAdvertising()->start();
+    // No reiniciamos shouldExitOnDisconnect aquí, eso lo manejamos en runConfigLoop
 }
 
 // Implementación de los métodos de BLEHandler
@@ -29,6 +30,10 @@ bool BLEHandler::checkConfigMode(PCA9555& ioExpander) {
         unsigned long startTime = millis();
         while (digitalRead(CONFIG_PIN) == LOW) {
             if (millis() - startTime >= CONFIG_TRIGGER_TIME) {
+                // Reiniciar variables de estado
+                isConnected = false;
+                shouldExitOnDisconnect = false;
+                
                 // Obtener configuración LoRa para el nombre BLE
                 LoRaConfig loraConfig = ConfigManager::getLoRaConfig();
                 String bleName = BLE_DEVICE_PREFIX + String(loraConfig.devEUI);
@@ -71,16 +76,21 @@ void BLEHandler::runConfigLoop(PCA9555& ioExpander) {
     const unsigned long timeout = CONFIG_BLE_WAIT_TIMEOUT; // Usar constante de config.h
 
     while (true) {
+        // Verificar si debemos salir por desconexión de cliente
+        if (shouldExitOnDisconnect && !isConnected) {
+            BLEDevice::getAdvertising()->stop();
+            shouldExitOnDisconnect = false; // Resetear la bandera
+            break;
+        }
+        
         // Timeout para esperar conexión
         if (millis() - startTime >= timeout && !BLEHandler::isConnected) {
-            DEBUG_PRINTLN(F("Timeout alcanzado sin conexión BLE, saliendo del modo configuración"));
             BLEDevice::getAdvertising()->stop();
             break;
         }
         
         // Timeout para conexión activa
         if (BLEHandler::isConnected && (millis() - BLEHandler::connectionStartTime >= BLEHandler::connectionTimeout)) {
-            DEBUG_PRINTLN(F("Timeout de conexión BLE activa alcanzado, desconectando cliente"));
             if (pBLEServer) {
                 pBLEServer->disconnect(0); // Desconectar todos los clientes
                 BLEHandler::isConnected = false;
