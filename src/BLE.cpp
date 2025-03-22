@@ -5,20 +5,27 @@
 
 #include "BLE.h"
 
+// Inicialización de variables estáticas
+bool BLEHandler::isConnected = false;
+unsigned long BLEHandler::connectionStartTime = 0;
+BLEServer* BLEHandler::pBLEServer = nullptr;
+
 // Implementación de los métodos de la clase ServerCallbacks
 void BLEHandler::ServerCallbacks::onConnect(BLEServer* pServer) {
     DEBUG_PRINTLN(F("BLE Cliente conectado"));
+    BLEHandler::isConnected = true;
+    BLEHandler::connectionStartTime = millis();
 }
 
 void BLEHandler::ServerCallbacks::onDisconnect(BLEServer* pServer) {
     DEBUG_PRINTLN(F("BLE Cliente desconectado, reiniciando publicidad..."));
+    BLEHandler::isConnected = false;
     pServer->getAdvertising()->start();
 }
 
 // Implementación de los métodos de BLEHandler
 bool BLEHandler::checkConfigMode(PCA9555& ioExpander) {
     if (digitalRead(CONFIG_PIN) == LOW) {
-        DEBUG_PRINTLN("Modo configuración activado");
         unsigned long startTime = millis();
         while (digitalRead(CONFIG_PIN) == LOW) {
             if (millis() - startTime >= CONFIG_TRIGGER_TIME) {
@@ -28,11 +35,11 @@ bool BLEHandler::checkConfigMode(PCA9555& ioExpander) {
                 
                 // Inicializar BLE
                 BLEDevice::init(bleName.c_str());
-                BLEServer* pServer = BLEDevice::createServer();
-                pServer->setCallbacks(new ServerCallbacks());
+                pBLEServer = BLEDevice::createServer();
+                pBLEServer->setCallbacks(new ServerCallbacks());
                 
                 // Configurar servicio BLE
-                BLEService* pService = setupService(pServer);
+                BLEService* pService = setupService(pBLEServer);
                 
                 // Configurar publicidad BLE
                 BLEAdvertising* pAdvertising = BLEDevice::getAdvertising();
@@ -60,12 +67,39 @@ BLEServer* BLEHandler::initBLE(const String& devEUI) {
 }
 
 void BLEHandler::runConfigLoop(PCA9555& ioExpander) {
-    // Bucle de parpadeo del LED de configuración
+    unsigned long startTime = millis();
+    const unsigned long timeout = CONFIG_BLE_WAIT_TIMEOUT; // Usar constante de config.h
+
     while (true) {
-        ioExpander.digitalWrite(CONFIG_LED_PIN, HIGH);
-        delay(500);
-        ioExpander.digitalWrite(CONFIG_LED_PIN, LOW);
-        delay(500);
+        // Timeout para esperar conexión
+        if (millis() - startTime >= timeout && !BLEHandler::isConnected) {
+            DEBUG_PRINTLN(F("Timeout alcanzado sin conexión BLE, saliendo del modo configuración"));
+            BLEDevice::getAdvertising()->stop();
+            break;
+        }
+        
+        // Timeout para conexión activa
+        if (BLEHandler::isConnected && (millis() - BLEHandler::connectionStartTime >= BLEHandler::connectionTimeout)) {
+            DEBUG_PRINTLN(F("Timeout de conexión BLE activa alcanzado, desconectando cliente"));
+            if (pBLEServer) {
+                pBLEServer->disconnect(0); // Desconectar todos los clientes
+                BLEHandler::isConnected = false;
+                BLEDevice::getAdvertising()->start();
+            }
+        }
+        
+        // Control del LED según estado de conexión
+        if (BLEHandler::isConnected) {
+            // Cliente conectado, LED fijo
+            ioExpander.digitalWrite(CONFIG_LED_PIN, HIGH);
+            delay(1000);
+        } else {
+            // Esperando conexión, LED parpadeando
+            ioExpander.digitalWrite(CONFIG_LED_PIN, HIGH);
+            delay(250);
+            ioExpander.digitalWrite(CONFIG_LED_PIN, LOW);
+            delay(250);
+        }
     }
 }
 

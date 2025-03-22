@@ -127,8 +127,10 @@ double NtcManager::readNtc100kTemperature(const char* configKey) {
     // Elegir canal según sensorId: "NTC1" => AIN1+/AIN0-, "NTC2" => AIN3+/AIN2-
     uint8_t muxConfig = 0; 
     if (strcmp(configKey, "0") == 0) {
+        DEBUG_PRINTLN("NTC100K 0");
         muxConfig = ADS_P_AIN1 | ADS_N_AIN0;  // AIN1+ / AIN0-
     } else if (strcmp(configKey, "1") == 0) {
+        DEBUG_PRINTLN("NTC100K 1");
         muxConfig = ADS_P_AIN3 | ADS_N_AIN2;  // AIN3+ / AIN2-
     } else {
         // Si no coincide con "NTC1" ni "NTC2", retornamos NAN
@@ -137,6 +139,7 @@ double NtcManager::readNtc100kTemperature(const char* configKey) {
 
     // Medir voltaje diferencial
     float diffVoltage = AdcUtilities::measureAdcDifferential(muxConfig);
+    DEBUG_PRINTF("NTC100K diffVoltage: %f\n", diffVoltage);
     if (isnan(diffVoltage)) {
         return NAN;
     }

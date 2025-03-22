@@ -7,7 +7,7 @@
 #include "debug.h"
 
 // time execution < 10 ms
-bool HardwareManager::initHardware(PCA9555& ioExpander, PowerManager& powerManager, SensirionI2cSht3x& sht30Sensor, SPIClass& spi) {
+bool HardwareManager::initHardware(PCA9555& ioExpander, PowerManager& powerManager, SensirionI2cSht3x& sht30Sensor, SPIClass& spi, const std::vector<SensorConfig>& enabledNormalSensors) {
     #ifdef DEVICE_TYPE_ANALOGIC || DEVICE_TYPE_BASIC
     // Configurar GPIO one wire con pull-up
     pinMode(ONE_WIRE_BUS, INPUT_PULLUP);
@@ -19,14 +19,25 @@ bool HardwareManager::initHardware(PCA9555& ioExpander, PowerManager& powerManag
     // Inicializar SPI con pines definidos
     spi.begin(SPI_SCK_PIN, SPI_MISO_PIN, SPI_MOSI_PIN);
 
-    //Inicializar SHT30 para reset y dummy lectura
-    sht30Sensor.begin(Wire, SHT30_I2C_ADDR_44);
-    sht30Sensor.softReset();
+    // Verificar si hay algún sensor SHT30
+    bool sht30SensorEnabled = false;
+    for (const auto& sensor : enabledNormalSensors) {
+        if (sensor.type == SHT30 && sensor.enable) {
+            sht30SensorEnabled = true;
+            break;
+        }
+    }
 
-    // time execution ≈ 13 ms
-    float dummyTemp = 0.0f, dummyHum = 0.0f;
-    sht30Sensor.measureSingleShot(REPEATABILITY_LOW, false, dummyTemp, dummyHum);
-    // ////////////////////////////////////////////////////////////////
+    // Inicializar SHT30 solo si está habilitado en la configuración
+    if (sht30SensorEnabled) {
+        //Inicializar SHT30 para reset y dummy lectura
+        sht30Sensor.begin(Wire, SHT30_I2C_ADDR_44);
+        sht30Sensor.softReset();
+
+        // time execution ≈ 13 ms
+        float dummyTemp = 0.0f, dummyHum = 0.0f;
+        sht30Sensor.measureSingleShot(REPEATABILITY_LOW, false, dummyTemp, dummyHum);
+    }
     
     //Inicializar PCA9555 para expansión de I/O
     if (!ioExpander.begin()) {

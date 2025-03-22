@@ -32,6 +32,8 @@
 #define CONFIG_TRIGGER_TIME 5000
 #define CONFIG_TIMEOUT      30000
 #define CONFIG_LED_PIN      P11
+#define CONFIG_BLE_WAIT_TIMEOUT     60000   // Tiempo máximo de espera para conexión BLE (60 segundos)
+#define CONFIG_BLE_MAX_CONN_TIME    300000  // Tiempo máximo de conexión BLE activa (5 minutos)
 
 // LoRa
 #define LORA_NSS_PIN        8
@@ -64,7 +66,7 @@
 #define BLE_CHAR_SYSTEM_UUID         "2A37"
 #define BLE_CHAR_SENSORS_UUID        "2A40"
 #define BLE_CHAR_LORA_CONFIG_UUID    "2A41"
-#define BLE_DEVICE_PREFIX            "AGRICOS_"
+#define BLE_DEVICE_PREFIX            "AGRICOS-"
 
 // Calibración batería
 const double R1 = 470000.0;
@@ -139,6 +141,8 @@ const double conversionFactor = (R1 + R2) / R1;
 #define CONFIG_TRIGGER_TIME 5000
 #define CONFIG_TIMEOUT      30000
 #define CONFIG_LED_PIN      P11
+#define CONFIG_BLE_WAIT_TIMEOUT     60000   // Tiempo máximo de espera para conexión BLE (60 segundos)
+#define CONFIG_BLE_MAX_CONN_TIME    300000  // Tiempo máximo de conexión BLE activa (5 minutos)
 
 // LoRa
 #define LORA_NSS_PIN        8
@@ -175,7 +179,7 @@ const double conversionFactor = (R1 + R2) / R1;
 #define BLE_CHAR_NTC10K_UUID         "2A39"
 #define BLE_CHAR_CONDUCTIVITY_UUID   "2A3C"
 #define BLE_CHAR_PH_UUID             "2A3B"
-#define BLE_DEVICE_PREFIX            "AGRICOS_"
+#define BLE_DEVICE_PREFIX            "AGRICOS-"
 
 // Calibración batería
 const double R1 = 1000000.0;
@@ -326,8 +330,8 @@ const double conversionFactor = (R1 + R2) / R1;
     {"5", "SM1",   SOILH, true}, \
     {"8", "PH",    PH, true}, \
     {"R", "RTD1",  RTD, true}, \
-    {"D", "DS1",   DS18B20, true}, \
-    {"I2C", "SHT30", SHT30, true} \
+    {"D", "DS1",   DS18B20, false}, \
+    {"I2C", "SHT30", SHT30, false} \
 }
 
 // Sin sensores Modbus registrados
@@ -368,6 +372,8 @@ const double conversionFactor = (R1 + R2) / R1;
 #define CONFIG_TRIGGER_TIME 5000
 #define CONFIG_TIMEOUT      30000
 #define CONFIG_LED_PIN      P11
+#define CONFIG_BLE_WAIT_TIMEOUT     60000   // Tiempo máximo de espera para conexión BLE (60 segundos)
+#define CONFIG_BLE_MAX_CONN_TIME    300000  // Tiempo máximo de conexión BLE activa (5 minutos)
 
 // LoRa
 #define LORA_NSS_PIN        8
@@ -400,7 +406,7 @@ const double conversionFactor = (R1 + R2) / R1;
 #define BLE_CHAR_SYSTEM_UUID         "2A37"
 #define BLE_CHAR_SENSORS_UUID        "2A40"
 #define BLE_CHAR_LORA_CONFIG_UUID    "2A41"
-#define BLE_DEVICE_PREFIX            "AGRICOS_"
+#define BLE_DEVICE_PREFIX            "AGRICOS-"
 
 // Calibración batería
 const double R1 = 470000.0;

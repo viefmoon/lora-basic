@@ -43,7 +43,7 @@ extern SensirionI2cSht3x sht30Sensor;
 class SensorManager {
   public:
     // Inicializa pines, periféricos (ADC, RTD, etc.), OneWire, etc.
-    static void beginSensors();
+    static void beginSensors(const std::vector<SensorConfig>& enabledNormalSensors);
 
     // Devuelve la lectura (o lecturas) de un sensor NO-Modbus según su configuración.
     static SensorReading getSensorReading(const SensorConfig& cfg);
@@ -58,7 +58,11 @@ class SensorManager {
 #if defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
                                     , std::vector<ModbusSensorReading>& modbusReadings
 #endif
-                                    );
+                                    , const std::vector<SensorConfig>& enabledNormalSensors
+#if defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
+                                    , const std::vector<ModbusSensorConfig>& enabledModbusSensors
+#endif
+                                   );
 
 #ifdef DEVICE_TYPE_ANALOGIC
     

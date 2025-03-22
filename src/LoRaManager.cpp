@@ -108,7 +108,6 @@ int16_t LoRaManager::lwActivate(LoRaWANNode& node) {
             // Intentar solicitar y actualizar el tiempo del RTC hasta 3 veces
             while (!rtcUpdated && rtcAttempts < maxAttempts) {
                 rtcAttempts++;
-                DEBUG_PRINTF("Intento %d de actualización de RTC\n", rtcAttempts);
                 
                 bool macCommandSuccess = node.sendMacCommandReq(RADIOLIB_LORAWAN_MAC_DEVICE_TIME);
                 if (macCommandSuccess) {

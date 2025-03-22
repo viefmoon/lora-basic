@@ -15,6 +15,12 @@
 // Clase para gestionar toda la funcionalidad BLE
 class BLEHandler {
 public:
+    // Variables para control de estado BLE
+    static bool isConnected;
+    static unsigned long connectionStartTime;
+    static const unsigned long connectionTimeout = CONFIG_BLE_MAX_CONN_TIME; // Usar constante de config.h
+    static BLEServer* pBLEServer; // Referencia global al servidor BLE
+    
     /**
      * @brief Verifica si se mantuvo presionado el botón de configuración y activa el modo BLE.
      * @param ioExpander Referencia al expansor de I/O para controlar el LED

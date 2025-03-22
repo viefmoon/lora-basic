@@ -45,6 +45,12 @@ String stationId;
 bool systemInitialized;
 unsigned long setupStartTime; // Variable para almacenar el tiempo de inicio
 
+// Configuraciones de sensores
+std::vector<SensorConfig> enabledNormalSensors;
+#if defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
+std::vector<ModbusSensorConfig> enabledModbusSensors;
+#endif
+
 RTC_DS3231 rtc;
 PCA9555 ioExpander(I2C_ADDRESS_PCA9555, I2C_SDA_PIN, I2C_SCL_PIN);
 PowerManager powerManager(ioExpander);
@@ -93,8 +99,14 @@ void setup() {
     }
     ConfigManager::getSystemConfig(systemInitialized, timeToSleep, deviceId, stationId);
 
+    // Obtener configuraciones de sensores habilitados
+    enabledNormalSensors = ConfigManager::getEnabledSensorConfigs();
+#if defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
+    enabledModbusSensors = ConfigManager::getEnabledModbusSensorConfigs();
+#endif
+
     // Inicialización de hardware
-    if (!HardwareManager::initHardware(ioExpander, powerManager, sht30Sensor, spi)) {
+    if (!HardwareManager::initHardware(ioExpander, powerManager, sht30Sensor, spi, enabledNormalSensors)) {
         DEBUG_PRINTLN("Error en la inicialización del hardware");
         SleepManager::goToDeepSleep(timeToSleep, powerManager, ioExpander, &radio, node, LWsession, spi);
     }
@@ -114,7 +126,7 @@ void setup() {
     }
 
     // Inicializar sensores
-    SensorManager::beginSensors();
+    SensorManager::beginSensors(enabledNormalSensors);
 
     //TIEMPO TRASCURRIDO HASTA EL MOMENTO ≈ 98 ms
     // Inicializar radio LoRa
@@ -146,20 +158,22 @@ void loop() {
     std::vector<SensorReading> normalReadings;
 #if defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
     std::vector<ModbusSensorReading> modbusReadings;
-    SensorManager::getAllSensorReadings(normalReadings, modbusReadings);
+    SensorManager::getAllSensorReadings(normalReadings, modbusReadings, enabledNormalSensors, enabledModbusSensors);
+#else
+    SensorManager::getAllSensorReadings(normalReadings, enabledNormalSensors);
+#endif
 
     // Usar el nuevo formato delimitado en lugar de JSON
+#if defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
     LoRaManager::sendDelimitedPayload(normalReadings, modbusReadings, node, deviceId, stationId, rtc);
 #else
-    SensorManager::getAllSensorReadings(normalReadings);
-    
-    // Usar el nuevo formato delimitado en lugar de JSON
     LoRaManager::sendDelimitedPayload(normalReadings, node, deviceId, stationId, rtc);
 #endif
 
     // Calcular y mostrar el tiempo transcurrido antes de dormir
     unsigned long elapsedTime = millis() - setupStartTime;
     DEBUG_PRINTF("Tiempo transcurrido antes de sleep: %lu ms\n", elapsedTime);
+    delay(100);
 
     // Dormir
     SleepManager::goToDeepSleep(timeToSleep, powerManager, ioExpander, &radio, node, LWsession, spi);

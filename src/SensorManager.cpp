@@ -35,7 +35,7 @@ extern ADS124S08 ADC;
 // Métodos de la clase SensorManager
 // -------------------------------------------------------------------------------------
 
-void SensorManager::beginSensors() {
+void SensorManager::beginSensors(const std::vector<SensorConfig>& enabledNormalSensors) {
     // Encender alimentación 3.3V
     powerManager.power3V3On();
     
@@ -60,10 +60,22 @@ void SensorManager::beginSensors() {
     }
 
 #if defined(DEVICE_TYPE_BASIC) || defined(DEVICE_TYPE_ANALOGIC)
-    // TIEMPO ejecución ≈ 65 ms
-    // Inicializar DS18B20
-    dallasTemp.begin();
-    dallasTemp.requestTemperatures();
+    // Verificar si hay algún sensor DS18B20
+    bool ds18b20SensorEnabled = false;
+    for (const auto& sensor : enabledNormalSensors) {
+        if (sensor.type == DS18B20 && sensor.enable) {
+            ds18b20SensorEnabled = true;
+            break;
+        }
+    }
+
+    // Inicializar DS18B20 solo si está habilitado en la configuración
+    if (ds18b20SensorEnabled) {
+        // TIEMPO ejecución ≈ 65 ms
+        // Inicializar DS18B20
+        dallasTemp.begin();
+        dallasTemp.requestTemperatures();
+    }
     ////////////////////////////////////////////////////////////////
 #endif
 
@@ -75,7 +87,8 @@ void SensorManager::beginSensors() {
     delay(1);
     // Asegurarse de que el ADC esté despierto
     ADC.sendCommand(WAKE_OPCODE_MASK);
-    
+    delay(1);
+
     // Configurar ADC con referencia interna
     ADC.regWrite(REF_ADDR_MASK, ADS_REFINT_ON_ALWAYS | ADS_REFSEL_INT);
     
@@ -87,6 +100,7 @@ void SensorManager::beginSensors() {
     
     // Iniciar conversión continua
     ADC.reStart();
+    delay(10);
     ////////////////////////////////////////////////////////////////
 #endif
 }
@@ -215,17 +229,15 @@ ModbusSensorReading SensorManager::getModbusSensorReading(const ModbusSensorConf
 }
 #endif
 
-void SensorManager::getAllSensorReadings(std::vector<SensorReading>& normalReadings
+void SensorManager::getAllSensorReadings(std::vector<SensorReading>& normalReadings,
 #if defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
-                                        , std::vector<ModbusSensorReading>& modbusReadings
+                                        std::vector<ModbusSensorReading>& modbusReadings,
+#endif
+                                        const std::vector<SensorConfig>& enabledNormalSensors
+#if defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
+                                        , const std::vector<ModbusSensorConfig>& enabledModbusSensors
 #endif
                                         ) {
-    // Obtener configuraciones de sensores habilitados
-    auto enabledNormalSensors = ConfigManager::getEnabledSensorConfigs();
-#if defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
-    auto enabledModbusSensors = ConfigManager::getEnabledModbusSensorConfigs();
-#endif
-    
     // Reservar espacio para los vectores
     normalReadings.reserve(enabledNormalSensors.size());
 #if defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
