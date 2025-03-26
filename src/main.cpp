@@ -173,7 +173,7 @@ void loop() {
     // Calcular y mostrar el tiempo transcurrido antes de dormir
     unsigned long elapsedTime = millis() - setupStartTime;
     DEBUG_PRINTF("Tiempo transcurrido antes de sleep: %lu ms\n", elapsedTime);
-    delay(100);
+    delay(10);
 
     // Dormir
     SleepManager::goToDeepSleep(timeToSleep, powerManager, ioExpander, &radio, node, LWsession, spi);

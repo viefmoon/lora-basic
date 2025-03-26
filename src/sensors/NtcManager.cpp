@@ -139,7 +139,6 @@ double NtcManager::readNtc100kTemperature(const char* configKey) {
 
     // Medir voltaje diferencial
     float diffVoltage = AdcUtilities::measureAdcDifferential(muxConfig);
-    DEBUG_PRINTF("NTC100K diffVoltage: %f\n", diffVoltage);
     if (isnan(diffVoltage)) {
         return NAN;
     }

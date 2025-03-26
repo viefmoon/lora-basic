@@ -180,7 +180,6 @@ float SensorManager::readSensorValue(const SensorConfig &cfg, SensorReading &rea
             float tmp = 0.0f, hum = 0.0f;
             SHT30Sensor::read(tmp, hum);
             reading.subValues.clear();
-            DEBUG_PRINTF("Temperatura: %f, Humedad: %f\n", tmp, hum);
             
             // Agregar temperatura como primer valor [0]
             {

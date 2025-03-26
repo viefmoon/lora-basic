@@ -61,7 +61,6 @@ include/MAX31865.h
 include/ModbusMaster.h
 include/ModbusSensorManager.h
 include/PowerManager.h
-include/sensor_constants.h
 include/sensor_types.h
 include/SensorManager.h
 include/sensors/BatterySensor.h
@@ -72,6 +71,7 @@ include/sensors/NtcManager.h
 include/sensors/PHSensor.h
 include/sensors/RTDSensor.h
 include/sensors/SHT30Sensor.h
+include/SHT31.h
 include/SleepManager.h
 include/util/crc16.h
 include/util/word.h
@@ -99,6 +99,7 @@ src/sensors/NtcManager.cpp
 src/sensors/PHSensor.cpp
 src/sensors/RTDSensor.cpp
 src/sensors/SHT30Sensor.cpp
+src/SHT31.cpp
 src/SleepManager.cpp
 src/utilities.cpp
 test/README
@@ -145,206 +146,6 @@ public:
 };
 
 #endif // ADC_UTILITIES_H
-
-================
-File: include/BLE.h
-================
-#ifndef BLE_H
-#define BLE_H
-
-#include <Arduino.h>
-#include <BLEDevice.h>
-#include <BLEServer.h>
-#include <BLEAdvertising.h>
-#include <BLECharacteristic.h>
-#include <ArduinoJson.h>
-#include "clsPCA9555.h"
-#include "config.h"
-#include "config_manager.h"
-#include "debug.h"
-
-// Clase para gestionar toda la funcionalidad BLE
-class BLEHandler {
-public:
-    /**
-     * @brief Verifica si se mantuvo presionado el botón de configuración y activa el modo BLE.
-     * @param ioExpander Referencia al expansor de I/O para controlar el LED
-     * @return true si se activó el modo BLE, false en caso contrario
-     */
-    static bool checkConfigMode(PCA9555& ioExpander);
-
-    /**
-     * @brief Inicializa el BLE con el nombre del dispositivo basado en el devEUI
-     * @param devEUI Identificador único del dispositivo
-     * @return Puntero al servidor BLE creado
-     */
-    static BLEServer* initBLE(const String& devEUI);
-
-    /**
-     * @brief Configura los servicios y características BLE
-     * @param pServer Servidor BLE donde se configurarán los servicios
-     * @return Puntero al servicio BLE creado
-     */
-    static BLEService* setupService(BLEServer* pServer);
-
-    /**
-     * @brief Ejecuta el bucle de parpadeo del LED en modo configuración
-     * @param ioExpander Referencia al expansor de I/O para controlar el LED
-     */
-    static void runConfigLoop(PCA9555& ioExpander);
-
-private:
-    // Callback para eventos del servidor BLE
-    class ServerCallbacks: public BLEServerCallbacks {
-    public:
-        void onConnect(BLEServer* pServer) override;
-        void onDisconnect(BLEServer* pServer) override;
-    };
-
-    // Callback para configuración del sistema
-    class SystemConfigCallback: public BLECharacteristicCallbacks {
-        void onWrite(BLECharacteristic *pCharacteristic) override;
-        void onRead(BLECharacteristic *pCharacteristic) override;
-    };
-
-#ifdef DEVICE_TYPE_ANALOGIC
-    // Callback para NTC 100K
-    class NTC100KConfigCallback: public BLECharacteristicCallbacks {
-        void onWrite(BLECharacteristic *pCharacteristic) override;
-        void onRead(BLECharacteristic *pCharacteristic) override;
-    };
-
-    // Callback para NTC 10K
-    class NTC10KConfigCallback: public BLECharacteristicCallbacks {
-        void onWrite(BLECharacteristic *pCharacteristic) override;
-        void onRead(BLECharacteristic *pCharacteristic) override;
-    };
-
-    // Callback para Conductividad
-    class ConductivityConfigCallback: public BLECharacteristicCallbacks {
-        void onWrite(BLECharacteristic *pCharacteristic) override;
-        void onRead(BLECharacteristic *pCharacteristic) override;
-    };
-
-    // Callback para pH
-    class PHConfigCallback: public BLECharacteristicCallbacks {
-        void onWrite(BLECharacteristic *pCharacteristic) override;
-        void onRead(BLECharacteristic *pCharacteristic) override;
-    };
-#endif
-
-    // Callback para configuración de sensores
-#if defined(DEVICE_TYPE_BASIC) || defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
-    class SensorsConfigCallback: public BLECharacteristicCallbacks {
-        void onWrite(BLECharacteristic *pCharacteristic) override;
-        void onRead(BLECharacteristic *pCharacteristic) override;
-    };
-#endif
-
-    // Callback para configuración de LoRa
-    class LoRaConfigCallback: public BLECharacteristicCallbacks {
-        void onWrite(BLECharacteristic *pCharacteristic) override;
-        void onRead(BLECharacteristic *pCharacteristic) override;
-    };
-};
-
-#endif // BLE_H
-
-================
-File: include/clsPCA9555.h
-================
-/*
- * clsPCA9555.h
- *
- *  Created on: 27 jul. 2015
- *      Author: Nico
- */
-
-#ifndef CLSPCA9555_H_
-#define CLSPCA9555_H_
-
-#if defined(ARDUINO) && ARDUINO >= 100
-#include "Arduino.h"
-#else
-#include "WProgram.h"
-#endif
-
-#define DEBUG 0
-
-#include "config.h"
-
-/** enum with names of ports ED0 - ED15 */
-enum {
-    ED0, ED1, ED2 , ED3 , ED4 , ED5 , ED6 , ED7 ,
-    ED8, ED9, ED10, ED11, ED12, ED13, ED14, ED15
-};
-
-/** enum with names of the ports as they're referred to on the TI datasheet */
-enum {
-    P00, P01, P02, P03, P04, P05, P06, P07,
-    P10, P11, P12, P13, P14, P15, P16, P17,
-};
-
-//
-// PCA9555 defines
-//
-#define NXP_INPUT      0
-#define NXP_OUTPUT     2
-#define NXP_INVERT     4
-#define NXP_CONFIG     6
-
-class PCA9555 {
-public:
-    PCA9555(uint8_t address, int sda, int scl, int interruptPin = -1);
-    PCA9555(uint8_t address, int interruptPin = -1);
-    void pinMode(uint8_t pin, uint8_t IOMode );          // pinMode
-    uint8_t digitalRead(uint8_t pin);                    // digitalRead
-    void digitalWrite(uint8_t pin, uint8_t value );      // digitalWrite
-    uint8_t stateOfPin(uint8_t pin);                     // Actual ISR
-    void setClock(uint32_t clockFrequency);              // Clock speed
-    bool begin();                                        // Checks if PCA is responsive
-    void sleep();
-
-private:
-    static PCA9555* instancePointer;
-    static void alertISR(void); // Function pointing to actual ISR
-    void pinStates();           // Function tied to interrupt
-
-    //
-    // low level methods
-    //
-    uint16_t I2CGetValue(uint8_t address, uint8_t reg);
-    void I2CSetValue(uint8_t address, uint8_t reg, uint8_t value);
-
-    union {
-        struct {
-            uint8_t _stateOfPins_low;          // low order byte
-            uint8_t _stateOfPins_high;         // high order byte
-        };
-        uint16_t _stateOfPins;                 // 16 bits presentation
-    };
-    union {
-        struct {
-            uint8_t _configurationRegister_low;          // low order byte
-            uint8_t _configurationRegister_high;         // high order byte
-        };
-        uint16_t _configurationRegister;                 // 16 bits presentation
-    };
-    union {
-        struct {
-            uint8_t _valueRegister_low;                  // low order byte
-            uint8_t _valueRegister_high;                 // high order byte
-        };
-        uint16_t _valueRegister;
-    };
-    uint8_t _address;                                    // address of port this class is supporting
-    int _error;                                          // error code from I2C
-    int _sda;
-    int _scl;
-};
-
-
-#endif /* CLSPCA9555_H_ */
 
 ================
 File: include/debug.h
@@ -801,35 +602,6 @@ class ModbusMaster
 */
 
 ================
-File: include/sensor_constants.h
-================
-/*******************************************************************************************
- * Archivo: include/sensor_constants.h
- * Descripción: Constantes y definiciones para sensores
- *******************************************************************************************/
-
-#ifndef SENSOR_CONSTANTS_H
-#define SENSOR_CONSTANTS_H
-
-/**
- * @brief Claves para sensores específicos
- */
-// Claves para el sensor ambiental 4 en 1 (ENV4)
-#define ENV4_KEY_HUMIDITY "H"       // Clave para Humedad en sensor ENV4
-#define ENV4_KEY_TEMPERATURE "T"    // Clave para Temperatura en sensor ENV4
-#define ENV4_KEY_PRESSURE "P"       // Clave para Presión Atmosférica en sensor ENV4
-#define ENV4_KEY_ILLUMINATION "Lux" // Clave para Iluminación en sensor ENV4
-
-/**
- * @brief Tiempos de estabilización para sensores (en ms)
- */
-// Para sensores Modbus
-#define SENSOR_MODBUS_ENV4_STABILIZATION_TIME 5000   // Tiempo de estabilización para sensor ENV4
-// Añadir aquí otros tiempos de estabilización
-
-#endif // SENSOR_CONSTANTS_H
-
-================
 File: include/sensors/BatterySensor.h
 ================
 #ifndef BATTERY_SENSOR_H
@@ -1128,34 +900,118 @@ public:
 #endif // RTD_SENSOR_H
 
 ================
-File: include/sensors/SHT30Sensor.h
+File: include/SHT31.h
 ================
-#ifndef SHT30_SENSOR_H
-#define SHT30_SENSOR_H
+#pragma once
+//
+//    FILE: SHT31.h
+//  AUTHOR: Rob Tillaart
+// VERSION: 0.5.0
+//    DATE: 2019-02-08
+// PURPOSE: Arduino library for the SHT31 temperature and humidity sensor
+//          https://www.adafruit.com/product/2857
+//     URL: https://github.com/RobTillaart/SHT31
 
-#include <Arduino.h>
-#include "config.h"
-#include "debug.h"
-#include <SensirionI2cSht3x.h>
 
-// Variable externa
-extern SensirionI2cSht3x sht30Sensor;
+#include "Arduino.h"
+#include "Wire.h"
 
-/**
- * @brief Clase para manejar el sensor de temperatura y humedad SHT30
- */
-class SHT30Sensor {
+
+#define SHT31_LIB_VERSION             (F("0.5.0"))
+
+#ifndef SHT_DEFAULT_ADDRESS
+#define SHT_DEFAULT_ADDRESS           0x44
+#endif
+
+//  fields readStatus
+#define SHT31_STATUS_ALERT_PENDING    (1 << 15)
+#define SHT31_STATUS_HEATER_ON        (1 << 13)
+#define SHT31_STATUS_HUM_TRACK_ALERT  (1 << 11)
+#define SHT31_STATUS_TEMP_TRACK_ALERT (1 << 10)
+#define SHT31_STATUS_SYSTEM_RESET     (1 << 4)
+#define SHT31_STATUS_COMMAND_STATUS   (1 << 1)
+#define SHT31_STATUS_WRITE_CRC_STATUS (1 << 0)
+
+//  error codes
+#define SHT31_OK                      0x00
+#define SHT31_ERR_WRITECMD            0x81
+#define SHT31_ERR_READBYTES           0x82
+#define SHT31_ERR_HEATER_OFF          0x83
+#define SHT31_ERR_NOT_CONNECT         0x84
+#define SHT31_ERR_CRC_TEMP            0x85
+#define SHT31_ERR_CRC_HUM             0x86
+#define SHT31_ERR_CRC_STATUS          0x87
+#define SHT31_ERR_HEATER_COOLDOWN     0x88
+#define SHT31_ERR_HEATER_ON           0x89
+
+
+class SHT31
+{
 public:
-    /**
-     * @brief Lee temperatura y humedad del sensor SHT30
-     * 
-     * @param outTemp Variable donde se almacenará la temperatura en °C
-     * @param outHum Variable donde se almacenará la humedad relativa en %
-     */
-    static void read(float &outTemp, float &outHum);
+  SHT31(uint8_t address = SHT_DEFAULT_ADDRESS, TwoWire *wire = &Wire);
+
+  bool    begin();
+  uint8_t getAddress();
+
+  //  check sensor is reachable over I2C
+  virtual bool isConnected();
+
+  //  blocks 15 milliseconds + actual read + math
+  bool read(bool fast = true);
+
+  //  details see datasheet; summary in SHT31.cpp file
+  uint16_t readStatus();
+
+  //  lastRead is in milliSeconds since start
+  uint32_t lastRead() { return _lastRead; };
+
+  bool reset(bool hard = false);
+
+  //  do not use heater for long periods,
+  //  use it for max 3 minutes to heat up
+  //  and let it cool down at least 3 minutes.
+  void setHeatTimeout(uint8_t seconds);
+  uint8_t getHeatTimeout() { return _heatTimeout; };
+  bool heatOn();
+  bool heatOff();
+  bool isHeaterOn();  // is the sensor still heating up?
+  bool heatUp() { return isHeaterOn(); };   // will be obsolete in future
+
+  float    getHumidity()       { return _rawHumidity    * (100.0 / 65535); };
+  float    getTemperature()    { return _rawTemperature * (175.0 / 65535) - 45; };
+  float    getFahrenheit()     { return _rawTemperature * (63.0 /13107.0) - 49; };
+  uint16_t getRawHumidity()    { return _rawHumidity; };
+  uint16_t getRawTemperature() { return _rawTemperature; };
+
+
+  // ASYNC INTERFACE
+  bool requestData();
+  bool dataReady();
+  bool readData(bool fast = true);
+
+  int getError();  //  clears error flag
+
+protected:
+  uint8_t  _address;
+  uint8_t  _heatTimeout;   //  seconds
+  uint32_t _lastRead;
+  uint32_t _lastRequest;   //  for async interface
+  uint32_t _heaterStart;
+  uint32_t _heaterStop;
+  bool     _heaterOn;
+  uint16_t _rawHumidity;
+  uint16_t _rawTemperature;
+  uint8_t  _error;
+
+private:
+  uint8_t crc8(const uint8_t *data, uint8_t len);
+  virtual bool writeCmd(uint16_t cmd);
+  virtual bool readBytes(uint8_t n, uint8_t *val);
+  TwoWire* _wire;
 };
 
-#endif // SHT30_SENSOR_H
+
+//  -- END OF FILE --
 
 ================
 File: include/SleepManager.h
@@ -1421,38 +1277,6 @@ libraries scanning project source files.
 
 More information about PlatformIO Library Dependency Finder
 - https://docs.platformio.org/page/librarymanager/ldf.html
-
-================
-File: src/AdcUtilities.cpp
-================
-#include "AdcUtilities.h"
-#include "config_manager.h"
-#include "debug.h"
-
-#ifdef DEVICE_TYPE_ANALOGIC
-#include "ADS124S08.h"
-extern ADS124S08 ADC;
-
-float AdcUtilities::measureAdcDifferential(uint8_t muxConfig)
-{
-    // Configurar MUX
-    ADC.regWrite(INPMUX_ADDR_MASK, muxConfig);
-    
-    // Iniciar lectura
-    uint8_t dummy1 = 0, dummy2 = 0;
-    int32_t rawData = ADC.dataRead(&dummy1, &dummy2, &dummy2);
-    if (rawData & 0x00800000) {
-        // Extender signo si el bit 23 está en 1
-        rawData |= 0xFF000000;
-    }
-
-    // Convertir a voltaje asumiendo referencia interna de 2.5V
-    // ADC de 24 bits => rango ±2^23
-    float voltage = (float)rawData / 8388608.0f * 2.5f;
-    return voltage;
-}
-
-#endif // DEVICE_TYPE_ANALOGIC
 
 ================
 File: src/ModbusMaster.cpp
@@ -2423,217 +2247,6 @@ float DS18B20Sensor::read() {
 #endif // defined(DEVICE_TYPE_BASIC) || defined(DEVICE_TYPE_ANALOGIC)
 
 ================
-File: src/sensors/NtcManager.cpp
-================
-#include "sensors/NtcManager.h"
-#include <cmath>  // Para fabs() y otras funciones matemáticas
-#include "config_manager.h"
-#include "debug.h"
-#include "config.h"  // Para acceder a NTC_TEMP_MIN y NTC_TEMP_MAX
-
-#ifdef DEVICE_TYPE_ANALOGIC
-#include "ADS124S08.h"
-#include "AdcUtilities.h"
-extern ADS124S08 ADC;
-
-void NtcManager::calculateSteinhartHartCoeffs(double T1, double R1,
-                                          double T2, double R2,
-                                          double T3, double R3,
-                                          double &A, double &B, double &C) 
-{
-    // Ecuación de Steinhart-Hart:
-    // 1/T = A + B*ln(R) + C*(ln(R))^3
-    
-    double L1 = log(R1);
-    double L2 = log(R2);
-    double L3 = log(R3);
-    
-    double Y1 = 1.0 / T1;
-    double Y2 = 1.0 / T2;
-    double Y3 = 1.0 / T3;
-    
-    // Resolver sistema de ecuaciones para encontrar A, B, C
-    double L1_3 = L1 * L1 * L1;
-    double L2_3 = L2 * L2 * L2;
-    double L3_3 = L3 * L3 * L3;
-    
-    double denominator = (L2 - L1) * (L3 - L1) * (L3 - L2);
-    
-    // Protección contra división por cero
-    if (fabs(denominator) < 1e-10) {
-        // Asignar NAN para indicar claramente el error
-        A = NAN;
-        B = NAN;
-        C = NAN;
-        return;
-    }
-    
-    // Calcular C
-    C = ((Y2 - Y1) * (L3 - L1) - (Y3 - Y1) * (L2 - L1)) / 
-        ((L2_3 - L1_3) * (L3 - L1) - (L3_3 - L1_3) * (L2 - L1));
-    
-    // Calcular B
-    B = ((Y2 - Y1) - C * (L2_3 - L1_3)) / (L2 - L1);
-    
-    // Calcular A
-    A = Y1 - B * L1 - C * L1_3;
-}
-
-double NtcManager::steinhartHartTemperature(double resistance, double A, double B, double C) 
-{
-    if (resistance <= 0.0) {
-        return NAN;
-    }
-    double lnR = log(resistance);
-    double invT = A + B * lnR + C * lnR*lnR*lnR;  // 1/T en Kelvin^-1
-    double tempK = 1.0 / invT;                   // Kelvin
-    double tempC = tempK - 273.15;               // °C
-    return tempC;
-}
-
-double NtcManager::computeNtcResistanceFromBridge(double diffVoltage)
-{
-    // La rama de referencia es 1.25 V. 
-    // diffVoltage = (Vneg - 1.25)
-    
-    // Corregimos la interpretación del voltaje diferencial:
-    // Para NTC, cuando la temperatura aumenta, la resistencia disminuye y el voltaje Vneg aumenta
-    // Por lo tanto, diffVoltage aumenta con la temperatura
-    
-    // Vneg = diffVoltage + 1.25
-    double Vneg = diffVoltage + 1.25;
-    
-    // Validación de rangos
-    if (Vneg <= 0.0 || Vneg >= 2.5) {
-        return -1.0;  // Indica valor inválido
-    }
-    
-    // Fórmula corregida: Si Vneg aumenta (mayor temperatura), Rntc debe disminuir
-    double Rntc = 100000.0 * ((2.5 - Vneg) / Vneg);
-    
-    return Rntc;
-}
-
-double NtcManager::computeNtcResistanceFromVoltageDivider(double voltage, double vRef, double rFixed, bool ntcTop)
-{
-    // Validación de rangos
-    if (voltage <= 0.0 || voltage >= vRef) {
-        return -1.0;  // Indica valor inválido
-    }
-    
-    // Calcular resistencia del NTC
-    double Rntc;
-    
-    if (ntcTop) {
-        // NTC conectado a Vref (arriba) y resistencia fija a GND (abajo)
-        // Fórmula: Rntc = rFixed * (vRef - voltage) / voltage
-        Rntc = rFixed * ((vRef - voltage) / voltage);
-    } else {
-        // NTC conectado a GND (abajo) y resistencia fija a Vref (arriba)
-        // Fórmula: Rntc = rFixed * voltage / (vRef - voltage)
-        Rntc = rFixed * (voltage / (vRef - voltage));
-    }
-    
-    return Rntc;
-}
-
-double NtcManager::readNtc100kTemperature(const char* configKey) {
-    // Obtener calibración NTC100K de la configuración
-    double t1=25.0, r1=100000.0, t2=35.0, r2=64770.0, t3=45.0, r3=42530.0;
-    ConfigManager::getNTC100KConfig(t1, r1, t2, r2, t3, r3);
-
-    // Pasar °C a Kelvin
-    double T1K = t1 + 273.15;
-    double T2K = t2 + 273.15;
-    double T3K = t3 + 273.15;
-
-    // Calcular coeficientes Steinhart-Hart
-    double A=0, B=0, C=0;
-    calculateSteinhartHartCoeffs(T1K, r1, T2K, r2, T3K, r3, A, B, C);
-    
-    // Elegir canal según sensorId: "NTC1" => AIN1+/AIN0-, "NTC2" => AIN3+/AIN2-
-    uint8_t muxConfig = 0; 
-    if (strcmp(configKey, "0") == 0) {
-        muxConfig = ADS_P_AIN1 | ADS_N_AIN0;  // AIN1+ / AIN0-
-    } else if (strcmp(configKey, "1") == 0) {
-        muxConfig = ADS_P_AIN3 | ADS_N_AIN2;  // AIN3+ / AIN2-
-    } else {
-        // Si no coincide con "NTC1" ni "NTC2", retornamos NAN
-        return NAN;
-    }
-
-    // Medir voltaje diferencial
-    float diffVoltage = AdcUtilities::measureAdcDifferential(muxConfig);
-    if (isnan(diffVoltage)) {
-        return NAN;
-    }
-
-    // Calcular la resistencia NTC en ohms
-    double Rntc = computeNtcResistanceFromBridge(diffVoltage);
-    if (Rntc <= 0.0) {
-        return NAN;
-    }
-
-    // Usar Steinhart-Hart para calcular la temperatura en °C
-    double tempC = steinhartHartTemperature(Rntc, A, B, C);
-    
-    // Validar que el valor de temperatura está dentro de los límites aceptables
-    if (isnan(tempC) || tempC < NTC_TEMP_MIN || tempC > NTC_TEMP_MAX) {
-        return NAN;
-    }
-    
-    return tempC;
-}
-
-double NtcManager::readNtc10kTemperature() {
-    // Obtener calibración NTC10K de la configuración
-    // Usando valores por defecto para un NTC10K común
-    double t1=25.0, r1=10000.0, t2=50.0, r2=3893.0, t3=85.0, r3=1218.0;
-    ConfigManager::getNTC10KConfig(t1, r1, t2, r2, t3, r3);
-
-    // Pasar °C a Kelvin
-    double T1K = t1 + 273.15;
-    double T2K = t2 + 273.15;
-    double T3K = t3 + 273.15;
-
-    // Calcular coeficientes Steinhart-Hart
-    double A=0, B=0, C=0;
-    calculateSteinhartHartCoeffs(T1K, r1, T2K, r2, T3K, r3, A, B, C);
-
-    // NTC3 está en el canal AIN11 con AINCOM
-    uint8_t muxConfig = ADS_P_AIN11 | ADS_N_AIN8;
-    
-    // Medir voltaje single-ended
-    float voltage = AdcUtilities::measureAdcDifferential(muxConfig);
-    if (isnan(voltage)) {
-        return NAN;
-    }
-
-    // Calcular la resistencia NTC
-    // El NTC en NTC3 está conectado entre 2.5V y el punto medio con resistencia de 10k a GND
-    double vRef = 2.5; // Voltaje de referencia
-    double rFixed = 10000.0; // Resistencia fija (10k)
-    bool ntcTop = true; // NTC está conectado a Vref (arriba)
-    
-    double Rntc = computeNtcResistanceFromVoltageDivider(voltage, vRef, rFixed, ntcTop);
-    if (Rntc <= 0.0) {
-        return NAN;
-    }
-
-    // Usar Steinhart-Hart para calcular la temperatura en °C
-    double tempC = steinhartHartTemperature(Rntc, A, B, C);
-    
-    // Validar que el valor de temperatura está dentro de los límites aceptables
-    if (isnan(tempC) || tempC < NTC_TEMP_MIN || tempC > NTC_TEMP_MAX) {
-        return NAN;
-    }
-    
-    return tempC;
-}
-
-#endif // DEVICE_TYPE_ANALOGIC
-
-================
 File: src/sensors/RTDSensor.cpp
 ================
 #include "sensors/RTDSensor.h"
@@ -2653,30 +2266,318 @@ float RTDSensor::read() {
 }
 
 ================
-File: src/sensors/SHT30Sensor.cpp
+File: src/SHT31.cpp
 ================
-#include "sensors/SHT30Sensor.h"
+//
+//    FILE: SHT31.cpp
+//  AUTHOR: Rob Tillaart
+// VERSION: 0.5.0
+//    DATE: 2019-02-08
+// PURPOSE: Arduino library for the SHT31 temperature and humidity sensor
+//          https://www.adafruit.com/product/2857
+//     URL: https://github.com/RobTillaart/SHT31
 
-/**
- * @brief Lee temperatura y humedad del sensor SHT30
- * 
- * @param outTemp Variable donde se almacenará la temperatura en °C
- * @param outHum Variable donde se almacenará la humedad relativa en %
- */
-void SHT30Sensor::read(float &outTemp, float &outHum) {
-    float temperature = 0.0f;
-    float humidity = 0.0f;
 
-    int16_t error = sht30Sensor.measureSingleShot(REPEATABILITY_HIGH, false, temperature, humidity);
-    delay(20);
-    if (error != NO_ERROR) {
-        outTemp = NAN;
-        outHum = NAN;
-        return;
-    }
-    outTemp = temperature;
-    outHum = humidity;
+#include "SHT31.h"
+
+
+//  SUPPORTED COMMANDS - single shot mode only
+#define SHT31_READ_STATUS       0xF32D
+#define SHT31_CLEAR_STATUS      0x3041
+
+#define SHT31_SOFT_RESET        0x30A2
+#define SHT31_HARD_RESET        0x0006
+
+#define SHT31_MEASUREMENT_FAST  0x2416     //  page 10 datasheet
+#define SHT31_MEASUREMENT_SLOW  0x2400     //  no clock stretching
+
+#define SHT31_HEAT_ON           0x306D
+#define SHT31_HEAT_OFF          0x3066
+#define SHT31_HEATER_TIMEOUT    180000UL   //  milliseconds
+
+
+SHT31::SHT31(uint8_t address, TwoWire *wire)
+{
+  _wire           = wire;
+  _address        = address;
+  _lastRead       = 0;
+  _rawTemperature = 0;
+  _rawHumidity    = 0;
+  _heatTimeout    = 0;
+  _heaterStart    = 0;
+  _heaterStop     = 0;
+  _heaterOn       = false;
+  _error          = SHT31_OK;
 }
+
+
+bool SHT31::begin()
+{
+  if ((_address != 0x44) && (_address != 0x45))
+  {
+    return false;
+  }
+  return reset();
+}
+
+
+bool SHT31::isConnected()
+{
+  _wire->beginTransmission(_address);
+  int rv = _wire->endTransmission();
+  if (rv != 0) _error = SHT31_ERR_NOT_CONNECT;
+  return (rv == 0);
+}
+
+
+uint8_t SHT31::getAddress()
+{
+  return _address;
+}
+
+
+bool SHT31::read(bool fast)
+{
+  if (writeCmd(fast ? SHT31_MEASUREMENT_FAST : SHT31_MEASUREMENT_SLOW) == false)
+  {
+    return false;
+  }
+  delay(fast ? 4 : 15);   //  table 4 datasheet
+  return readData(fast);
+}
+
+
+#ifdef doc
+//  bit - description
+//  ==================
+//  15   Alert pending status
+//        '0': no pending alerts
+//        '1': at least one pending alert - default
+//  14  Reserved ‘0’
+//  13  Heater status
+//        '0’ : Heater OFF - default
+//        '1’ : Heater ON
+//  12  Reserved '0’
+//  11  Humidity tracking alert
+//        '0’ : no alert - default
+//        '1’ : alert
+//  10  Temp tracking alert
+//        '0’ : no alert - default
+//        '1’ : alert
+//  9:5 Reserved '00000’
+//  4   System reset detected
+//        '0': no reset since last ‘clear status register’ command
+//        '1': reset detected (hard or soft reset command or supply fail) - default
+//  3:2 Reserved ‘00’
+//  1   Command status
+//        '0': last command executed successfully
+//        '1': last command not processed. Invalid or failed checksum
+//  0   Write data checksum status
+//        '0': checksum of last write correct
+//        '1': checksum of last write transfer failed
+#endif
+
+
+uint16_t SHT31::readStatus()
+{
+  uint8_t status[3] = { 0, 0, 0 };
+  //  page 13 datasheet
+  if (writeCmd(SHT31_READ_STATUS) == false)
+  {
+    return 0xFFFF;
+  }
+  //  16 bit status + CRC
+  if (readBytes(3, (uint8_t*) &status[0]) == false)
+  {
+    return 0xFFFF;
+  }
+
+  if (status[2] != crc8(status, 2))
+  {
+    _error = SHT31_ERR_CRC_STATUS;
+    return 0xFFFF;
+  }
+
+  return (uint16_t) (status[0] << 8) + status[1];
+}
+
+
+bool SHT31::reset(bool hard)
+{
+  bool b = writeCmd(hard ? SHT31_HARD_RESET : SHT31_SOFT_RESET);
+  if (b == false)
+  {
+    return false;
+  }
+  delay(1);   //  table 4 datasheet
+  return true;
+}
+
+
+void SHT31::setHeatTimeout(uint8_t seconds)
+{
+  _heatTimeout = seconds;
+  if (_heatTimeout > 180) _heatTimeout = 180;
+}
+
+
+bool SHT31::heatOn()
+{
+  if (isHeaterOn()) return true;
+  if ((_heaterStop > 0) && (millis() - _heaterStop < SHT31_HEATER_TIMEOUT))
+  {
+    _error = SHT31_ERR_HEATER_COOLDOWN;
+    return false;
+  }
+  if (writeCmd(SHT31_HEAT_ON) == false)
+  {
+    _error = SHT31_ERR_HEATER_ON;
+    return false;
+  }
+  _heaterStart = millis();
+  _heaterOn    = true;
+  return true;
+}
+
+
+bool SHT31::heatOff()
+{
+  //  always switch off the heater - ignore _heaterOn flag.
+  if (writeCmd(SHT31_HEAT_OFF) == false)
+  {
+    _error = SHT31_ERR_HEATER_OFF;  // can be serious!
+    return false;
+  }
+  _heaterStop = millis();
+  _heaterOn   = false;
+  return true;
+}
+
+
+bool SHT31::isHeaterOn()
+{
+  if (_heaterOn == false)
+  {
+    return false;
+  }
+  //  did not exceed time out
+  if (millis() - _heaterStart < (_heatTimeout * 1000UL))
+  {
+    return true;
+  }
+  heatOff();
+  return false;
+}
+
+
+bool SHT31::requestData()
+{
+  if (writeCmd(SHT31_MEASUREMENT_SLOW) == false)
+  {
+    return false;
+  }
+  _lastRequest = millis();
+  return true;
+}
+
+
+bool SHT31::dataReady()
+{
+  return ((millis() - _lastRequest) > 15);  //  TODO MAGIC NR
+}
+
+
+bool SHT31::readData(bool fast)
+{
+  uint8_t buffer[6];
+  if (readBytes(6, (uint8_t*) &buffer[0]) == false)
+  {
+    return false;
+  }
+
+  if (!fast)
+  {
+    if (buffer[2] != crc8(buffer, 2))
+    {
+      _error = SHT31_ERR_CRC_TEMP;
+      return false;
+    }
+    if (buffer[5] != crc8(buffer + 3, 2))
+    {
+      _error = SHT31_ERR_CRC_HUM;
+      return false;
+    }
+  }
+
+  _rawTemperature = (buffer[0] << 8) + buffer[1];
+  _rawHumidity    = (buffer[3] << 8) + buffer[4];
+
+  _lastRead = millis();
+
+  return true;
+}
+
+
+int SHT31::getError()
+{
+  int rv = _error;
+  _error = SHT31_OK;
+  return rv;
+}
+
+
+//////////////////////////////////////////////////////////
+
+uint8_t SHT31::crc8(const uint8_t *data, uint8_t len)
+{
+  //  CRC-8 formula from page 14 of SHT spec pdf
+  const uint8_t POLY(0x31);
+  uint8_t crc(0xFF);
+
+  for (uint8_t j = len; j; --j)
+  {
+    crc ^= *data++;
+
+    for (uint8_t i = 8; i; --i)
+    {
+      crc = (crc & 0x80) ? (crc << 1) ^ POLY : (crc << 1);
+    }
+  }
+  return crc;
+}
+
+
+bool SHT31::writeCmd(uint16_t cmd)
+{
+  _wire->beginTransmission(_address);
+  _wire->write(cmd >> 8 );
+  _wire->write(cmd & 0xFF);
+  if (_wire->endTransmission() != 0)
+  {
+    _error = SHT31_ERR_WRITECMD;
+    return false;
+  }
+  return true;
+}
+
+
+bool SHT31::readBytes(uint8_t n, uint8_t *val)
+{
+  int rv = _wire->requestFrom(_address, (uint8_t) n);
+  if (rv == n)
+  {
+    for (uint8_t i = 0; i < n; i++)
+    {
+      val[i] = _wire->read();
+    }
+    return true;
+  }
+  _error = SHT31_ERR_READBYTES;
+  return false;
+}
+
+
+//  -- END OF FILE --
 
 ================
 File: test/README
@@ -3141,45 +3042,707 @@ class ADS124S08
 #endif /* ADS124S08_H_ */
 
 ================
-File: include/HardwareManager.h
+File: include/clsPCA9555.h
 ================
-/*******************************************************************************************
- * Archivo: include/HardwareManager.h
- * Descripción: Gestión de inicialización y configuración del hardware del sistema.
- * Incluye funciones para inicialización de periféricos y control de energía.
- *******************************************************************************************/
+/*
+ * clsPCA9555.h
+ *
+ *  Created on: 27 jul. 2015
+ *      Author: Nico
+ */
 
-#ifndef HARDWARE_MANAGER_H
-#define HARDWARE_MANAGER_H
+#ifndef CLSPCA9555_H_
+#define CLSPCA9555_H_
 
-#include <Arduino.h>
-#include <Wire.h>
-#include <SPI.h>
+#if defined(ARDUINO) && ARDUINO >= 100
+#include "Arduino.h"
+#else
+#include "WProgram.h"
+#endif
+
+#define DEBUG 0
+
 #include "config.h"
-#include "PowerManager.h"
-#include "clsPCA9555.h"
-#include <SensirionI2cSht3x.h>
 
-class HardwareManager {
-public:
-    /**
-     * @brief Inicializa el bus I2C, la expansión de I/O y el PowerManager.
-     * @param ioExpander Referencia al expansor de I/O
-     * @param powerManager Referencia al gestor de energía
-     * @param sht30Sensor Referencia al sensor SHT30
-     * @param spi Referencia a la interfaz SPI
-     * @return true si la inicialización fue exitosa, false en caso contrario
-     */
-    static bool initHardware(PCA9555& ioExpander, PowerManager& powerManager, SensirionI2cSht3x& sht30Sensor, SPIClass& spi);
-
-    /**
-     * @brief Inicializa los pines de selección SPI (SS)
-     */
-    static void initializeSPISSPins();
-
+/** enum with names of ports ED0 - ED15 */
+enum {
+    ED0, ED1, ED2 , ED3 , ED4 , ED5 , ED6 , ED7 ,
+    ED8, ED9, ED10, ED11, ED12, ED13, ED14, ED15
 };
 
-#endif // HARDWARE_MANAGER_H
+/** enum with names of the ports as they're referred to on the TI datasheet */
+enum {
+    P00, P01, P02, P03, P04, P05, P06, P07,
+    P10, P11, P12, P13, P14, P15, P16, P17,
+};
+
+//
+// PCA9555 defines
+//
+#define NXP_INPUT      0
+#define NXP_OUTPUT     2
+#define NXP_INVERT     4
+#define NXP_CONFIG     6
+
+class PCA9555 {
+public:
+    PCA9555(uint8_t address, int sda, int scl, int interruptPin = -1);
+    PCA9555(uint8_t address, int interruptPin = -1);
+    void pinMode(uint8_t pin, uint8_t IOMode );          // pinMode
+    uint8_t digitalRead(uint8_t pin);                    // digitalRead
+    void digitalWrite(uint8_t pin, uint8_t value );      // digitalWrite
+    uint8_t stateOfPin(uint8_t pin);                     // Actual ISR
+    void setClock(uint32_t clockFrequency);              // Clock speed
+    bool begin();                                        // Checks if PCA is responsive
+    void sleep();
+
+private:
+    static PCA9555* instancePointer;
+    static void alertISR(void); // Function pointing to actual ISR
+    void pinStates();           // Function tied to interrupt
+
+    //
+    // low level methods
+    //
+    uint16_t I2CGetValue(uint8_t address, uint8_t reg);
+    void I2CSetValue(uint8_t address, uint8_t reg, uint8_t value);
+
+    union {
+        struct {
+            uint8_t _stateOfPins_low;          // low order byte
+            uint8_t _stateOfPins_high;         // high order byte
+        };
+        uint16_t _stateOfPins;                 // 16 bits presentation
+    };
+    union {
+        struct {
+            uint8_t _configurationRegister_low;          // low order byte
+            uint8_t _configurationRegister_high;         // high order byte
+        };
+        uint16_t _configurationRegister;                 // 16 bits presentation
+    };
+    union {
+        struct {
+            uint8_t _valueRegister_low;                  // low order byte
+            uint8_t _valueRegister_high;                 // high order byte
+        };
+        uint16_t _valueRegister;
+    };
+    uint8_t _address;                                    // address of port this class is supporting
+    int _error;                                          // error code from I2C
+    int _sda;
+    int _scl;
+};
+
+
+#endif /* CLSPCA9555_H_ */
+
+================
+File: include/sensors/SHT30Sensor.h
+================
+#ifndef SHT30_SENSOR_H
+#define SHT30_SENSOR_H
+
+#include <Arduino.h>
+#include "config.h"
+#include "debug.h"
+#include "SHT31.h"
+
+// Variable externa
+extern SHT31 sht30Sensor;
+
+/**
+ * @brief Clase para manejar el sensor de temperatura y humedad SHT30
+ */
+class SHT30Sensor {
+public:
+    /**
+     * @brief Lee temperatura y humedad del sensor SHT30
+     * 
+     * @param outTemp Variable donde se almacenará la temperatura en °C
+     * @param outHum Variable donde se almacenará la humedad relativa en %
+     */
+    static void read(float &outTemp, float &outHum);
+};
+
+#endif // SHT30_SENSOR_H
+
+================
+File: src/AdcUtilities.cpp
+================
+#include "AdcUtilities.h"
+#include "config_manager.h"
+#include "debug.h"
+
+#ifdef DEVICE_TYPE_ANALOGIC
+#include "ADS124S08.h"
+extern ADS124S08 ADC;
+
+float AdcUtilities::measureAdcDifferential(uint8_t muxConfig)
+{
+    // Configurar MUX
+    ADC.regWrite(INPMUX_ADDR_MASK, muxConfig);
+    
+    // Iniciar una conversión single shot
+    ADC.sendCommand(START_OPCODE_MASK);
+    
+    // Leer el resultado
+    uint8_t dummy1 = 0, dummy2 = 0;
+    int32_t rawData = ADC.dataRead(&dummy1, &dummy2, &dummy2);
+    
+    // Detener la conversión
+    ADC.sendCommand(STOP_OPCODE_MASK);
+    
+    if (rawData == -1) {  // Error en la lectura
+        return NAN;
+    }
+    
+    if (rawData & 0x00800000) {
+        // Extender signo si el bit 23 está en 1
+        rawData |= 0xFF000000;
+    }
+
+    // Convertir a voltaje asumiendo referencia interna de 2.5V
+    // ADC de 24 bits => rango ±2^23
+    float voltage = (float)rawData / 8388608.0f * 2.5f;
+    return voltage;
+}
+
+#endif // DEVICE_TYPE_ANALOGIC
+
+================
+File: src/sensors/HDS10Sensor.cpp
+================
+#include "sensors/HDS10Sensor.h"
+
+#ifdef DEVICE_TYPE_ANALOGIC
+
+#include <cmath>
+#include "ADS124S08.h"
+#include "AdcUtilities.h"
+
+// Variables globales declaradas en main.cpp
+extern ADS124S08 ADC;
+
+/**
+ * @brief Convierte la resistencia del sensor HDS10 a porcentaje de humedad usando interpolación logarítmica
+ * @param sensorR Resistencia del sensor en ohms
+ * @return Porcentaje de humedad relativa (50-100%)
+ */
+float HDS10Sensor::convertResistanceToHumidity(float sensorR) {
+    // Tabla de valores aproximados de la curva "Average" del sensor
+    // Valores en kΩ vs. %HR
+    static const float Rvals[] = { 1.0f,   2.0f,   5.0f,   10.0f,  50.0f,  100.0f, 200.0f };
+    static const float Hvals[] = { 50.0f, 60.0f, 70.0f,  80.0f, 90.0f, 95.0f, 100.0f };
+    static const int   NPOINTS = sizeof(Rvals)/sizeof(Rvals[0]);
+    
+    // Pasar ohms a kΩ
+    float Rk = sensorR * 1e-3f;
+    
+    // Si está por debajo de la primera resistencia, limitamos a Hvals[0]
+    if (Rk <= Rvals[0]) {
+        return Hvals[0];
+    }
+    
+    // Si está por encima de la última resistencia, limitamos a Hvals[NPOINTS-1]
+    if (Rk >= Rvals[NPOINTS-1]) {
+        return Hvals[NPOINTS-1];
+    }
+
+    // Buscar en qué tramo cae Rk
+    for (int i=0; i < NPOINTS-1; i++) {
+        float R1 = Rvals[i];
+        float R2 = Rvals[i+1];
+        if (Rk >= R1 && Rk <= R2) {
+            // Interpolación logarítmica entre R1 y R2
+            float logR   = log10(Rk);
+            float logR1  = log10(R1);
+            float logR2  = log10(R2);
+
+            float HR1 = Hvals[i];
+            float HR2 = Hvals[i+1];
+
+            float humidity = HR1 + (HR2 - HR1) * ((logR - logR1) / (logR2 - logR1));
+            return humidity;
+        }
+    }
+
+    // Deberíamos haber retornado dentro del for, pero por seguridad:
+    return Hvals[NPOINTS-1];
+}
+
+/**
+ * @brief Lee el sensor HDS10 conectado al canal AIN5/AIN8 del ADC
+ * 
+ * @return float Porcentaje de humedad (0-100%) según calibración definida
+ *               o NAN si ocurre un error o no es posible leer
+ */
+float HDS10Sensor::read() {
+    // Asegurarse de que el ADC esté despierto
+    ADC.sendCommand(WAKE_OPCODE_MASK);
+    
+    // Configurar el multiplexor para leer AIN5 con referencia a AIN8
+    uint8_t muxConfig = ADS_P_AIN5 | ADS_N_AIN8;
+    
+    // Usar AdcUtilities para leer el voltaje diferencial
+    float voltage = AdcUtilities::measureAdcDifferential(muxConfig);
+    
+    // Verificar si el voltaje está en rango válido
+    if (voltage <= 0.0f || voltage >= 2.5f) {
+        return NAN; // Valor fuera de rango
+    }
+    
+    // Calcular la resistencia del sensor basado en el divisor de voltaje correcto
+    // El circuito es: 2.5V --- R1(220K) --- [Punto de medición] --- R2(220K) --- HDS10 --- GND
+    // Y estamos midiendo la caída de voltaje en R2+HDS10
+    
+    float r1 = 220000.0f; // Primera resistencia de 220K
+    float r2 = 220000.0f; // Segunda resistencia de 220K
+    
+    // Calculamos la corriente en el circuito (que es la misma en toda la serie)
+    // I = (2.5V - voltage) / R1
+    float current = (2.5f - voltage) / r1;
+    
+    // El voltaje medido es la caída en R2+HDS10
+    // voltage = I * (R2 + HDS10)
+    // Por lo tanto, HDS10 = voltage/I - R2
+    float sensorR = (voltage / current) - r2;
+    
+    if (sensorR < 0.0f) {
+        return NAN; // Valor no válido
+    }
+    
+    // Usar la función de conversión basada en interpolación logarítmica
+    float percentage = convertResistanceToHumidity(sensorR);
+    
+    return percentage;
+}
+
+#endif // DEVICE_TYPE_ANALOGIC
+
+================
+File: src/sensors/NtcManager.cpp
+================
+#include "sensors/NtcManager.h"
+#include <cmath>  // Para fabs() y otras funciones matemáticas
+#include "config_manager.h"
+#include "debug.h"
+#include "config.h"  // Para acceder a NTC_TEMP_MIN y NTC_TEMP_MAX
+
+#ifdef DEVICE_TYPE_ANALOGIC
+#include "ADS124S08.h"
+#include "AdcUtilities.h"
+extern ADS124S08 ADC;
+
+void NtcManager::calculateSteinhartHartCoeffs(double T1, double R1,
+                                          double T2, double R2,
+                                          double T3, double R3,
+                                          double &A, double &B, double &C) 
+{
+    // Ecuación de Steinhart-Hart:
+    // 1/T = A + B*ln(R) + C*(ln(R))^3
+    
+    double L1 = log(R1);
+    double L2 = log(R2);
+    double L3 = log(R3);
+    
+    double Y1 = 1.0 / T1;
+    double Y2 = 1.0 / T2;
+    double Y3 = 1.0 / T3;
+    
+    // Resolver sistema de ecuaciones para encontrar A, B, C
+    double L1_3 = L1 * L1 * L1;
+    double L2_3 = L2 * L2 * L2;
+    double L3_3 = L3 * L3 * L3;
+    
+    double denominator = (L2 - L1) * (L3 - L1) * (L3 - L2);
+    
+    // Protección contra división por cero
+    if (fabs(denominator) < 1e-10) {
+        // Asignar NAN para indicar claramente el error
+        A = NAN;
+        B = NAN;
+        C = NAN;
+        return;
+    }
+    
+    // Calcular C
+    C = ((Y2 - Y1) * (L3 - L1) - (Y3 - Y1) * (L2 - L1)) / 
+        ((L2_3 - L1_3) * (L3 - L1) - (L3_3 - L1_3) * (L2 - L1));
+    
+    // Calcular B
+    B = ((Y2 - Y1) - C * (L2_3 - L1_3)) / (L2 - L1);
+    
+    // Calcular A
+    A = Y1 - B * L1 - C * L1_3;
+}
+
+double NtcManager::steinhartHartTemperature(double resistance, double A, double B, double C) 
+{
+    if (resistance <= 0.0) {
+        return NAN;
+    }
+    double lnR = log(resistance);
+    double invT = A + B * lnR + C * lnR*lnR*lnR;  // 1/T en Kelvin^-1
+    double tempK = 1.0 / invT;                   // Kelvin
+    double tempC = tempK - 273.15;               // °C
+    return tempC;
+}
+
+double NtcManager::computeNtcResistanceFromBridge(double diffVoltage)
+{
+    // La rama de referencia es 1.25 V. 
+    // diffVoltage = (Vneg - 1.25)
+    
+    // Corregimos la interpretación del voltaje diferencial:
+    // Para NTC, cuando la temperatura aumenta, la resistencia disminuye y el voltaje Vneg aumenta
+    // Por lo tanto, diffVoltage aumenta con la temperatura
+    
+    // Vneg = diffVoltage + 1.25
+    double Vneg = diffVoltage + 1.25;
+    
+    // Validación de rangos
+    if (Vneg <= 0.0 || Vneg >= 2.5) {
+        return -1.0;  // Indica valor inválido
+    }
+    
+    // Fórmula corregida: Si Vneg aumenta (mayor temperatura), Rntc debe disminuir
+    double Rntc = 100000.0 * ((2.5 - Vneg) / Vneg);
+    
+    return Rntc;
+}
+
+double NtcManager::computeNtcResistanceFromVoltageDivider(double voltage, double vRef, double rFixed, bool ntcTop)
+{
+    // Validación de rangos
+    if (voltage <= 0.0 || voltage >= vRef) {
+        return -1.0;  // Indica valor inválido
+    }
+    
+    // Calcular resistencia del NTC
+    double Rntc;
+    
+    if (ntcTop) {
+        // NTC conectado a Vref (arriba) y resistencia fija a GND (abajo)
+        // Fórmula: Rntc = rFixed * (vRef - voltage) / voltage
+        Rntc = rFixed * ((vRef - voltage) / voltage);
+    } else {
+        // NTC conectado a GND (abajo) y resistencia fija a Vref (arriba)
+        // Fórmula: Rntc = rFixed * voltage / (vRef - voltage)
+        Rntc = rFixed * (voltage / (vRef - voltage));
+    }
+    
+    return Rntc;
+}
+
+double NtcManager::readNtc100kTemperature(const char* configKey) {
+    // Obtener calibración NTC100K de la configuración
+    double t1=25.0, r1=100000.0, t2=35.0, r2=64770.0, t3=45.0, r3=42530.0;
+    ConfigManager::getNTC100KConfig(t1, r1, t2, r2, t3, r3);
+
+    // Pasar °C a Kelvin
+    double T1K = t1 + 273.15;
+    double T2K = t2 + 273.15;
+    double T3K = t3 + 273.15;
+
+    // Calcular coeficientes Steinhart-Hart
+    double A=0, B=0, C=0;
+    calculateSteinhartHartCoeffs(T1K, r1, T2K, r2, T3K, r3, A, B, C);
+    
+    // Elegir canal según sensorId: "NTC1" => AIN1+/AIN0-, "NTC2" => AIN3+/AIN2-
+    uint8_t muxConfig = 0; 
+    if (strcmp(configKey, "0") == 0) {
+        DEBUG_PRINTLN("NTC100K 0");
+        muxConfig = ADS_P_AIN1 | ADS_N_AIN0;  // AIN1+ / AIN0-
+    } else if (strcmp(configKey, "1") == 0) {
+        DEBUG_PRINTLN("NTC100K 1");
+        muxConfig = ADS_P_AIN3 | ADS_N_AIN2;  // AIN3+ / AIN2-
+    } else {
+        // Si no coincide con "NTC1" ni "NTC2", retornamos NAN
+        return NAN;
+    }
+
+    // Medir voltaje diferencial
+    float diffVoltage = AdcUtilities::measureAdcDifferential(muxConfig);
+    DEBUG_PRINTF("NTC100K diffVoltage: %f\n", diffVoltage);
+    if (isnan(diffVoltage)) {
+        return NAN;
+    }
+
+    // Calcular la resistencia NTC en ohms
+    double Rntc = computeNtcResistanceFromBridge(diffVoltage);
+    if (Rntc <= 0.0) {
+        return NAN;
+    }
+
+    // Usar Steinhart-Hart para calcular la temperatura en °C
+    double tempC = steinhartHartTemperature(Rntc, A, B, C);
+    
+    // Validar que el valor de temperatura está dentro de los límites aceptables
+    if (isnan(tempC) || tempC < NTC_TEMP_MIN || tempC > NTC_TEMP_MAX) {
+        return NAN;
+    }
+    
+    return tempC;
+}
+
+double NtcManager::readNtc10kTemperature() {
+    // Obtener calibración NTC10K de la configuración
+    // Usando valores por defecto para un NTC10K común
+    double t1=25.0, r1=10000.0, t2=50.0, r2=3893.0, t3=85.0, r3=1218.0;
+    ConfigManager::getNTC10KConfig(t1, r1, t2, r2, t3, r3);
+
+    // Pasar °C a Kelvin
+    double T1K = t1 + 273.15;
+    double T2K = t2 + 273.15;
+    double T3K = t3 + 273.15;
+
+    // Calcular coeficientes Steinhart-Hart
+    double A=0, B=0, C=0;
+    calculateSteinhartHartCoeffs(T1K, r1, T2K, r2, T3K, r3, A, B, C);
+
+    // NTC3 está en el canal AIN11 con AINCOM
+    uint8_t muxConfig = ADS_P_AIN11 | ADS_N_AIN8;
+    
+    // Medir voltaje single-ended
+    float voltage = AdcUtilities::measureAdcDifferential(muxConfig);
+    if (isnan(voltage)) {
+        return NAN;
+    }
+
+    // Calcular la resistencia NTC
+    // El NTC en NTC3 está conectado entre 2.5V y el punto medio con resistencia de 10k a GND
+    double vRef = 2.5; // Voltaje de referencia
+    double rFixed = 10000.0; // Resistencia fija (10k)
+    bool ntcTop = true; // NTC está conectado a Vref (arriba)
+    
+    double Rntc = computeNtcResistanceFromVoltageDivider(voltage, vRef, rFixed, ntcTop);
+    if (Rntc <= 0.0) {
+        return NAN;
+    }
+
+    // Usar Steinhart-Hart para calcular la temperatura en °C
+    double tempC = steinhartHartTemperature(Rntc, A, B, C);
+    
+    // Validar que el valor de temperatura está dentro de los límites aceptables
+    if (isnan(tempC) || tempC < NTC_TEMP_MIN || tempC > NTC_TEMP_MAX) {
+        return NAN;
+    }
+    
+    return tempC;
+}
+
+#endif // DEVICE_TYPE_ANALOGIC
+
+================
+File: src/sensors/PHSensor.cpp
+================
+#include "sensors/PHSensor.h"
+
+#ifdef DEVICE_TYPE_ANALOGIC
+
+#include <cmath>
+#include "ADS124S08.h"
+#include "AdcUtilities.h"
+#include "sensors/NtcManager.h"
+
+// Variables globales declaradas en main.cpp
+extern ADS124S08 ADC;
+
+/**
+ * @brief Convierte el voltaje medido a valor de pH
+ * 
+ * @param voltage Voltaje medido del sensor de pH
+ * @param tempC Temperatura del agua en grados Celsius para compensación
+ * @return float Valor de pH (0-14)
+ */
+float PHSensor::convertVoltageToPH(float voltage, float tempC) {
+    float V1, T1, V2, T2, V3, T3, TEMP_CAL;
+    ConfigManager::getPHConfig(V1, T1, V2, T2, V3, T3, TEMP_CAL);
+
+    // Si solutionTemp es NAN, usar la temperatura de calibración como valor por defecto
+    if (isnan(tempC)) {
+        tempC = TEMP_CAL;
+    }
+
+    // Datos de calibración (pH, voltaje)
+    const double pH_calib[] = {T1, T2, T3};
+    const double V_calib[] = {V1, V2, V3};
+    const int n = 3; // Número de puntos de calibración
+
+    // Calcular sumatorias necesarias para mínimos cuadrados
+    double sum_pH = 0.0;
+    double sum_V = 0.0;
+    double sum_pHV = 0.0;
+    double sum_pH2 = 0.0;
+
+    for (int i = 0; i < n; i++) {
+        sum_pH += pH_calib[i];
+        sum_V += V_calib[i];
+        sum_pHV += pH_calib[i] * V_calib[i];
+        sum_pH2 += pH_calib[i] * pH_calib[i];
+    }
+
+    // Calcular la pendiente S usando mínimos cuadrados
+    double S_CAL = ((n * sum_pHV) - (sum_pH * sum_V)) / ((n * sum_pH2) - (sum_pH * sum_pH));
+
+    // Calcular el offset E0 usando mínimos cuadrados
+    double E0 = ((sum_V) + (S_CAL * sum_pH)) / n;
+
+    // Ajustar la pendiente según la temperatura actual usando la ecuación de Nernst
+    const double tempK = (tempC + 273.15);
+    const double tempCalK = (TEMP_CAL + 273.15);
+    const double S_T = S_CAL * (tempK / tempCalK);
+
+    // Calcular pH usando la ecuación de Nernst ajustada: pH = (E0 - E) / S(T)
+    double pH = ((E0 + voltage) / S_T);
+    // Limitar el pH a un rango físicamente posible (0-14)
+    pH = constrain(pH, 0.0, 14.0);
+
+    return pH;
+}
+
+/**
+ * @brief Lee el sensor de pH conectado al canal AIN7 del ADC
+ * 
+ * @return float Valor de pH (0-14), o NAN si hay error
+ */
+float PHSensor::read() {
+    // Asegurarse de que el ADC esté despierto
+    ADC.sendCommand(WAKE_OPCODE_MASK);
+    
+    // Configurar el multiplexor para leer AIN7 con referencia a AINCOM (tierra)
+    uint8_t muxConfig = ADS_P_AIN7 | ADS_N_AINCOM;
+    
+    // Realizar una única lectura del sensor
+    float voltage = AdcUtilities::measureAdcDifferential(muxConfig);
+    
+    // Verificar si el voltaje es válido
+    if (isnan(voltage) || voltage < -2.5f || voltage > 2.5f) {
+        return NAN;
+    }
+    
+    // Obtener temperatura únicamente del sensor NTC10K
+    float waterTemp = NtcManager::readNtc10kTemperature();
+    
+    // Convertir a pH con compensación de temperatura
+    float pHValue = convertVoltageToPH(voltage, waterTemp);
+    
+    return pHValue;
+}
+
+#endif // DEVICE_TYPE_ANALOGIC
+
+================
+File: include/BLE.h
+================
+#ifndef BLE_H
+#define BLE_H
+
+#include <Arduino.h>
+#include <BLEDevice.h>
+#include <BLEServer.h>
+#include <BLEAdvertising.h>
+#include <BLECharacteristic.h>
+#include <ArduinoJson.h>
+#include "clsPCA9555.h"
+#include "config.h"
+#include "config_manager.h"
+#include "debug.h"
+
+// Clase para gestionar toda la funcionalidad BLE
+class BLEHandler {
+public:
+    // Variables para control de estado BLE
+    static bool isConnected;
+    static unsigned long connectionStartTime;
+    static const unsigned long connectionTimeout = CONFIG_BLE_MAX_CONN_TIME; // Usar constante de config.h
+    static BLEServer* pBLEServer; // Referencia global al servidor BLE
+    static bool shouldExitOnDisconnect; // Indica si debemos salir del modo configuración al desconectar
+    
+    /**
+     * @brief Verifica si se mantuvo presionado el botón de configuración y activa el modo BLE.
+     * @param ioExpander Referencia al expansor de I/O para controlar el LED
+     * @return true si se activó el modo BLE, false en caso contrario
+     */
+    static bool checkConfigMode(PCA9555& ioExpander);
+
+    /**
+     * @brief Inicializa el BLE con el nombre del dispositivo basado en el devEUI
+     * @param devEUI Identificador único del dispositivo
+     * @return Puntero al servidor BLE creado
+     */
+    static BLEServer* initBLE(const String& devEUI);
+
+    /**
+     * @brief Configura los servicios y características BLE
+     * @param pServer Servidor BLE donde se configurarán los servicios
+     * @return Puntero al servicio BLE creado
+     */
+    static BLEService* setupService(BLEServer* pServer);
+
+    /**
+     * @brief Ejecuta el bucle de parpadeo del LED en modo configuración
+     * @param ioExpander Referencia al expansor de I/O para controlar el LED
+     */
+    static void runConfigLoop(PCA9555& ioExpander);
+
+private:
+    // Callback para eventos del servidor BLE
+    class ServerCallbacks: public BLEServerCallbacks {
+    public:
+        void onConnect(BLEServer* pServer) override;
+        void onDisconnect(BLEServer* pServer) override;
+    };
+
+    // Callback para configuración del sistema
+    class SystemConfigCallback: public BLECharacteristicCallbacks {
+        void onWrite(BLECharacteristic *pCharacteristic) override;
+        void onRead(BLECharacteristic *pCharacteristic) override;
+    };
+
+#ifdef DEVICE_TYPE_ANALOGIC
+    // Callback para NTC 100K
+    class NTC100KConfigCallback: public BLECharacteristicCallbacks {
+        void onWrite(BLECharacteristic *pCharacteristic) override;
+        void onRead(BLECharacteristic *pCharacteristic) override;
+    };
+
+    // Callback para NTC 10K
+    class NTC10KConfigCallback: public BLECharacteristicCallbacks {
+        void onWrite(BLECharacteristic *pCharacteristic) override;
+        void onRead(BLECharacteristic *pCharacteristic) override;
+    };
+
+    // Callback para Conductividad
+    class ConductivityConfigCallback: public BLECharacteristicCallbacks {
+        void onWrite(BLECharacteristic *pCharacteristic) override;
+        void onRead(BLECharacteristic *pCharacteristic) override;
+    };
+
+    // Callback para pH
+    class PHConfigCallback: public BLECharacteristicCallbacks {
+        void onWrite(BLECharacteristic *pCharacteristic) override;
+        void onRead(BLECharacteristic *pCharacteristic) override;
+    };
+#endif
+
+    // Callback para configuración de sensores
+#if defined(DEVICE_TYPE_BASIC) || defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
+    class SensorsConfigCallback: public BLECharacteristicCallbacks {
+        void onWrite(BLECharacteristic *pCharacteristic) override;
+        void onRead(BLECharacteristic *pCharacteristic) override;
+    };
+#endif
+
+    // Callback para configuración de LoRa
+    class LoRaConfigCallback: public BLECharacteristicCallbacks {
+        void onWrite(BLECharacteristic *pCharacteristic) override;
+        void onRead(BLECharacteristic *pCharacteristic) override;
+    };
+};
+
+#endif // BLE_H
 
 ================
 File: include/PowerManager.h
@@ -3218,6 +3781,220 @@ public:
 };
 
 #endif
+
+================
+File: src/MAX31865.cpp
+================
+#include "MAX31865.h"
+#include <math.h>   // Para sqrt
+
+/**
+ * @brief Constructor con PCA9555.
+ */
+MAX31865_RTD::MAX31865_RTD(
+    ptd_type type,
+    SPIClass& spi,
+    SPISettings& spiSettings,
+    PCA9555& pca,
+    uint8_t pcaPinCS
+)
+{
+  _spi = &spi;
+  _spiSettings = &spiSettings;
+  this->type = type;
+  this->_usePCA = true;
+  this->_pca = &pca;
+  this->_pcaPinCS = pcaPinCS;
+  this->_csPinMCU = 0xFF;
+}
+
+/**
+ * @brief Constructor con pin nativo de MCU.
+ */
+MAX31865_RTD::MAX31865_RTD(
+    ptd_type type,
+    SPIClass& spi,
+    SPISettings& spiSettings,
+    uint8_t csPin
+)
+{
+  _spi = &spi;
+  _spiSettings = &spiSettings;
+  this->type = type;
+  this->_usePCA = false;
+  this->_pca = nullptr;
+  this->_pcaPinCS = 0xFF;
+  this->_csPinMCU = csPin;
+}
+
+// -----------------------------------------------------------------------
+void MAX31865_RTD::configure(bool v_bias, bool conversion_mode, bool one_shot,
+                             bool three_wire, uint8_t fault_cycle, bool fault_clear,
+                             bool filter_50hz,
+                             uint16_t low_threshold,
+                             uint16_t high_threshold)
+{
+  uint8_t control_bits = 0;
+  // Arma la máscara
+  control_bits |= (v_bias ? 0x80 : 0);
+  control_bits |= (conversion_mode ? 0x40 : 0);
+  control_bits |= (one_shot ? 0x20 : 0);
+  control_bits |= (three_wire ? 0x10 : 0);
+  control_bits |= (fault_cycle & 0b00001100);
+  control_bits |= (fault_clear ? 0x02 : 0);
+  control_bits |= (filter_50hz ? 0x01 : 0);
+
+  this->configuration_control_bits   = control_bits;
+  this->configuration_low_threshold  = low_threshold;
+  this->configuration_high_threshold = high_threshold;
+
+  // Llama a reconfigure() para escribir valores
+  reconfigure();
+}
+
+// -----------------------------------------------------------------------
+void MAX31865_RTD::reconfigure()
+{
+  // Inicia transacción SPI
+  _spi->beginTransaction(*_spiSettings);
+
+  // Escribe config
+  setCSLow();
+  _spi->transfer(0x80); // Dirección de escritura del registro config
+  _spi->transfer(this->configuration_control_bits);
+  setCSHigh();
+
+  // Umbrales
+  setCSLow();
+  _spi->transfer(0x83); // Registro de umbrales
+  _spi->transfer( (this->configuration_high_threshold >> 8) & 0xFF );
+  _spi->transfer(  this->configuration_high_threshold       & 0xFF );
+  _spi->transfer( (this->configuration_low_threshold  >> 8) & 0xFF );
+  _spi->transfer(  this->configuration_low_threshold        & 0xFF );
+  setCSHigh();
+
+  // Cierra transacción
+  _spi->endTransaction();
+}
+
+// -----------------------------------------------------------------------
+uint8_t MAX31865_RTD::read_all()
+{
+  uint16_t combined_bytes = 0;
+
+  _spi->beginTransaction(*_spiSettings);
+
+  setCSLow();
+  // Indica que leeremos desde la dirección 0 (se manda 0x00)
+  _spi->transfer(0x00);
+
+  // Orden de lectura: Config, RTD, High Fault Th, Low Fault Th, Status
+  measured_configuration = _spi->transfer(0x00);
+
+  combined_bytes  = ((uint16_t)_spi->transfer(0x00) << 8);
+  combined_bytes |=          _spi->transfer(0x00);
+  measured_resistance = (combined_bytes >> 1);
+
+  combined_bytes  = ((uint16_t)_spi->transfer(0x00) << 8);
+  combined_bytes |=          _spi->transfer(0x00);
+  measured_high_threshold = (combined_bytes >> 1);
+
+  combined_bytes  = ((uint16_t)_spi->transfer(0x00) << 8);
+  combined_bytes |=          _spi->transfer(0x00);
+  measured_low_threshold = (combined_bytes >> 1);
+
+  measured_status = _spi->transfer(0x00);
+
+  delayMicroseconds(20);
+  setCSHigh();
+  _spi->endTransaction();
+
+  // Reconfigura si resistencia=0 o hay falla
+  if ((measured_resistance == 0) || (measured_status != 0)) {
+    reconfigure();
+  }
+  return measured_status;
+}
+
+// -----------------------------------------------------------------------
+double MAX31865_RTD::temperature() const
+{
+  // Si hay error o resistencia inválida, retornar NAN
+  if (measured_status != 0 || measured_resistance == 0) {
+    return NAN;
+  }
+
+  // Callendar-Van Dusen
+  static const double a2 = 2.0 * RTD_B;
+  static const double b_sq = (RTD_A * RTD_A);
+  double rtd_resistance = (type == RTD_PT100) ? RTD_RESISTANCE_PT100 : RTD_RESISTANCE_PT1000;
+
+  double c = 1.0 - (resistance() / rtd_resistance);
+  double D = b_sq - 2.0 * a2 * c;
+  
+  // Verificar si la ecuación cuadrática tiene solución real
+  if (D < 0) {
+    return NAN;
+  }
+  
+  double tempC = (-RTD_A + sqrt(D)) / a2;
+
+  return tempC;
+}
+
+void MAX31865_RTD::setCSLow() {
+  if (_usePCA && _pca) {
+    _pca->digitalWrite(_pcaPinCS, LOW);
+    delayMicroseconds(5);
+  } else {
+    digitalWrite(_csPinMCU, LOW);
+  }
+}
+
+void MAX31865_RTD::setCSHigh() {
+  if (_usePCA && _pca) {
+    _pca->digitalWrite(_pcaPinCS, HIGH);
+  } else {
+    digitalWrite(_csPinMCU, HIGH);
+  }
+}
+
+double MAX31865_RTD::singleMeasurement(uint16_t conversionDelayMs) {
+    // Activar BIAS
+    uint8_t originalConfig = configuration_control_bits;
+    configuration_control_bits |= 0x80;  // Set VBIAS on
+    reconfigure();
+    
+    delay(10);  // Esperar a que VBIAS se estabilice
+    
+    // Iniciar conversión única
+    configuration_control_bits |= 0x20;  // Set one-shot bit
+    reconfigure();
+    
+    // Esperar a que la conversión termine
+    delay(conversionDelayMs);
+    
+    // Leer resultado
+    read_all();
+    
+    // Desactivar BIAS y one-shot
+    configuration_control_bits = originalConfig;
+    reconfigure();
+    
+    return temperature();
+}
+
+// Nuevo método begin para inicializar los pines
+bool MAX31865_RTD::begin() {
+    if (_usePCA && _pca) {
+        _pca->pinMode(_pcaPinCS, OUTPUT);
+        _pca->digitalWrite(_pcaPinCS, HIGH);
+    } else {
+        pinMode(_csPinMCU, OUTPUT);
+        digitalWrite(_csPinMCU, HIGH);
+    }
+    return true;
+}
 
 ================
 File: src/PowerManager.cpp
@@ -3370,213 +4147,277 @@ float ConductivitySensor::read() {
 #endif // DEVICE_TYPE_ANALOGIC
 
 ================
-File: src/sensors/HDS10Sensor.cpp
+File: src/sensors/SHT30Sensor.cpp
 ================
-#include "sensors/HDS10Sensor.h"
-
-#ifdef DEVICE_TYPE_ANALOGIC
-
-#include <cmath>
-#include "ADS124S08.h"
-#include "AdcUtilities.h"
-
-// Variables globales declaradas en main.cpp
-extern ADS124S08 ADC;
+#include "sensors/SHT30Sensor.h"
 
 /**
- * @brief Convierte la resistencia del sensor HDS10 a porcentaje de humedad usando interpolación logarítmica
- * @param sensorR Resistencia del sensor en ohms
- * @return Porcentaje de humedad relativa (50-100%)
+ * @brief Lee temperatura y humedad del sensor SHT30
+ * 
+ * @param outTemp Variable donde se almacenará la temperatura en °C
+ * @param outHum Variable donde se almacenará la humedad relativa en %
  */
-float HDS10Sensor::convertResistanceToHumidity(float sensorR) {
-    // Tabla de valores aproximados de la curva "Average" del sensor
-    // Valores en kΩ vs. %HR
-    static const float Rvals[] = { 1.0f,   2.0f,   5.0f,   10.0f,  50.0f,  100.0f, 200.0f };
-    static const float Hvals[] = { 50.0f, 60.0f, 70.0f,  80.0f, 90.0f, 95.0f, 100.0f };
-    static const int   NPOINTS = sizeof(Rvals)/sizeof(Rvals[0]);
-    
-    // Pasar ohms a kΩ
-    float Rk = sensorR * 1e-3f;
-    
-    // Si está por debajo de la primera resistencia, limitamos a Hvals[0]
-    if (Rk <= Rvals[0]) {
-        return Hvals[0];
-    }
-    
-    // Si está por encima de la última resistencia, limitamos a Hvals[NPOINTS-1]
-    if (Rk >= Rvals[NPOINTS-1]) {
-        return Hvals[NPOINTS-1];
-    }
-
-    // Buscar en qué tramo cae Rk
-    for (int i=0; i < NPOINTS-1; i++) {
-        float R1 = Rvals[i];
-        float R2 = Rvals[i+1];
-        if (Rk >= R1 && Rk <= R2) {
-            // Interpolación logarítmica entre R1 y R2
-            float logR   = log10(Rk);
-            float logR1  = log10(R1);
-            float logR2  = log10(R2);
-
-            float HR1 = Hvals[i];
-            float HR2 = Hvals[i+1];
-
-            float humidity = HR1 + (HR2 - HR1) * ((logR - logR1) / (logR2 - logR1));
-            return humidity;
+void SHT30Sensor::read(float &outTemp, float &outHum) {
+    // Intentar hasta 10 veces obtener una lectura válida
+    for (int i = 0; i < 15; i++) {
+        if (sht30Sensor.read()) {
+            float temp = sht30Sensor.getTemperature();
+            float hum = sht30Sensor.getHumidity();
+            
+            // Verificar que los valores sean válidos (no cero y dentro de rangos razonables)
+            if (temp != 0.0f && hum != 0.0f && temp > -40.0f && temp < 125.0f && hum > 0.0f && hum <= 100.0f) {
+                outTemp = temp;
+                outHum = hum;
+                return; // Retornar inmediatamente con la primera lectura válida
+            }
         }
+        delay(1); // Pausa entre mediciones
     }
 
-    // Deberíamos haber retornado dentro del for, pero por seguridad:
-    return Hvals[NPOINTS-1];
+    // Si no se encontró ninguna lectura válida
+    outTemp = NAN;
+    outHum = NAN;
+}
+
+================
+File: src/SleepManager.cpp
+================
+/*******************************************************************************************
+ * Archivo: src/SleepManager.cpp
+ * Descripción: Implementación de la gestión del modo deep sleep para el ESP32.
+ *******************************************************************************************/
+
+#include "SleepManager.h"
+#include "debug.h"
+#include "LoRaManager.h"
+
+void SleepManager::goToDeepSleep(uint32_t timeToSleep, 
+                               PowerManager& powerManager,
+                               PCA9555& ioExpander,
+                               SX1262* radio,
+                               LoRaWANNode& node,
+                               uint8_t* LWsession,
+                               SPIClass& spi) {
+    // Guardar sesión en RTC y otras rutinas de apagado
+    uint8_t *persist = node.getBufferSession();
+    memcpy(LWsession, persist, RADIOLIB_LORAWAN_SESSION_BUF_SIZE);
+    
+    // Apagar todos los reguladores
+    powerManager.allPowerOff();
+    
+    // Flush Serial antes de dormir
+    DEBUG_FLUSH();
+    DEBUG_END();
+    
+    // Apagar módulos
+    LoRaManager::prepareForSleep(radio);
+    btStop();
+
+    // Poner el PCA9555 en modo sleep
+    ioExpander.sleep();
+
+    // Deshabilitar I2C y SPI
+    Wire.end();
+    spi.end();
+    
+    // Configurar el temporizador y GPIO para despertar
+    esp_sleep_enable_timer_wakeup(timeToSleep * 1000000ULL);
+    gpio_wakeup_enable((gpio_num_t)CONFIG_PIN, GPIO_INTR_LOW_LEVEL);
+    esp_sleep_enable_gpio_wakeup();
+    esp_deep_sleep_enable_gpio_wakeup(BIT(CONFIG_PIN), ESP_GPIO_WAKEUP_GPIO_LOW);
+    
+    // Configurar pines para deep sleep
+    configurePinsForDeepSleep();
+    
+    esp_deep_sleep_start();
 }
 
 /**
- * @brief Lee el sensor HDS10 conectado al canal AIN5/AIN8 del ADC
- * 
- * @return float Porcentaje de humedad (0-100%) según calibración definida
- *               o NAN si ocurre un error o no es posible leer
+ * @brief Configura los pines no utilizados en alta impedancia para reducir el consumo durante deep sleep.
  */
-float HDS10Sensor::read() {
-    // Asegurarse de que el ADC esté despierto
-    ADC.sendCommand(WAKE_OPCODE_MASK);
-    
-    // Configurar el multiplexor para leer AIN5 con referencia a AIN8
-    uint8_t muxConfig = ADS_P_AIN5 | ADS_N_AIN8;
-    
-    // Usar AdcUtilities para leer el voltaje diferencial
-    float voltage = AdcUtilities::measureAdcDifferential(muxConfig);
-    
-    // Verificar si el voltaje está en rango válido
-    if (voltage <= 0.0f || voltage >= 2.5f) {
-        return NAN; // Valor fuera de rango
-    }
-    
-    // Calcular la resistencia del sensor basado en el divisor de voltaje correcto
-    // El circuito es: 2.5V --- R1(220K) --- [Punto de medición] --- R2(220K) --- HDS10 --- GND
-    // Y estamos midiendo la caída de voltaje en R2+HDS10
-    
-    float r1 = 220000.0f; // Primera resistencia de 220K
-    float r2 = 220000.0f; // Segunda resistencia de 220K
-    
-    // Calculamos la corriente en el circuito (que es la misma en toda la serie)
-    // I = (2.5V - voltage) / R1
-    float current = (2.5f - voltage) / r1;
-    
-    // El voltaje medido es la caída en R2+HDS10
-    // voltage = I * (R2 + HDS10)
-    // Por lo tanto, HDS10 = voltage/I - R2
-    float sensorR = (voltage / current) - r2;
-    
-    if (sensorR < 0.0f) {
-        return NAN; // Valor no válido
-    }
-    
-    // Usar la función de conversión basada en interpolación logarítmica
-    float percentage = convertResistanceToHumidity(sensorR);
-    
-    return percentage;
-}
+void SleepManager::configurePinsForDeepSleep() {
+#ifdef DEVICE_TYPE_BASIC
+    // Configurar pines específicos del módulo LoRa como ANALOG para DEVICE_TYPE_BASIC
+    pinMode(ONE_WIRE_BUS, ANALOG);
+    pinMode(BATTERY_PIN, ANALOG);
 
-#endif // DEVICE_TYPE_ANALOGIC
+    pinMode(LORA_RST_PIN, ANALOG);
+    pinMode(LORA_BUSY_PIN, ANALOG);
+    pinMode(LORA_DIO1_PIN, ANALOG);
+    pinMode(SPI_SCK_PIN, ANALOG);
+    pinMode(SPI_MISO_PIN, ANALOG);
+    pinMode(SPI_MOSI_PIN, ANALOG);
 
-================
-File: src/sensors/PHSensor.cpp
-================
-#include "sensors/PHSensor.h"
+    pinMode(20, ANALOG); //Serial RX
+    pinMode(21, ANALOG); //Serial TX
+
+    pinMode(I2C_SDA_PIN, ANALOG); //I2C SDA
+    pinMode(I2C_SCL_PIN, ANALOG); //I2C SCL
+
+    pinMode(9, ANALOG); //LORA NSS
+
+    // Configurar explícitamente LORA_NSS_PIN como salida en alto para mantener el chip select del módulo LoRa desactivado
+    pinMode(LORA_NSS_PIN, OUTPUT);
+    digitalWrite(LORA_NSS_PIN, HIGH);
+    gpio_hold_en((gpio_num_t)LORA_NSS_PIN);
+#endif
 
 #ifdef DEVICE_TYPE_ANALOGIC
+    // Configurar pines específicos del módulo LoRa como ANALOG para DEVICE_TYPE_ANALOGIC
+    pinMode(FLOW_SENSOR_PIN, ANALOG);
+    pinMode(ONE_WIRE_BUS, ANALOG);
 
-#include <cmath>
-#include "ADS124S08.h"
-#include "AdcUtilities.h"
-#include "sensors/NtcManager.h"
+    pinMode(LORA_RST_PIN, ANALOG);
+    pinMode(LORA_BUSY_PIN, ANALOG);
+    pinMode(LORA_DIO1_PIN, ANALOG);
+    pinMode(SPI_SCK_PIN, ANALOG);
+    pinMode(SPI_MISO_PIN, ANALOG);
+    pinMode(SPI_MOSI_PIN, ANALOG);
 
-// Variables globales declaradas en main.cpp
-extern ADS124S08 ADC;
+    pinMode(20, ANALOG); //Serial RX
+    pinMode(21, ANALOG); //Serial TX
 
-/**
- * @brief Convierte el voltaje medido a valor de pH
- * 
- * @param voltage Voltaje medido del sensor de pH
- * @param tempC Temperatura del agua en grados Celsius para compensación
- * @return float Valor de pH (0-14)
- */
-float PHSensor::convertVoltageToPH(float voltage, float tempC) {
-    float V1, T1, V2, T2, V3, T3, TEMP_CAL;
-    ConfigManager::getPHConfig(V1, T1, V2, T2, V3, T3, TEMP_CAL);
+    pinMode(I2C_SDA_PIN, ANALOG); //I2C SDA
+    pinMode(I2C_SCL_PIN, ANALOG); //I2C SCL
 
-    // Si solutionTemp es NAN, usar la temperatura de calibración como valor por defecto
-    if (isnan(tempC)) {
-        tempC = TEMP_CAL;
-    }
+    pinMode(9, ANALOG); //LORA NSS
 
-    // Datos de calibración (pH, voltaje)
-    const double pH_calib[] = {T1, T2, T3};
-    const double V_calib[] = {V1, V2, V3};
-    const int n = 3; // Número de puntos de calibración
+    // Configurar explícitamente LORA_NSS_PIN como salida en alto para mantener el chip select del módulo LoRa desactivado
+    pinMode(LORA_NSS_PIN, OUTPUT);
+    digitalWrite(LORA_NSS_PIN, HIGH);
+    gpio_hold_en((gpio_num_t)LORA_NSS_PIN);
+#endif
 
-    // Calcular sumatorias necesarias para mínimos cuadrados
-    double sum_pH = 0.0;
-    double sum_V = 0.0;
-    double sum_pHV = 0.0;
-    double sum_pH2 = 0.0;
+#ifdef DEVICE_TYPE_MODBUS
+    // Configurar pines específicos del módulo LoRa como ANALOG para DEVICE_TYPE_MODBUS
+    pinMode(FLOW_SENSOR_PIN, ANALOG);
+    pinMode(BATTERY_PIN, ANALOG);
 
-    for (int i = 0; i < n; i++) {
-        sum_pH += pH_calib[i];
-        sum_V += V_calib[i];
-        sum_pHV += pH_calib[i] * V_calib[i];
-        sum_pH2 += pH_calib[i] * pH_calib[i];
-    }
+    pinMode(LORA_RST_PIN, ANALOG);
+    pinMode(LORA_BUSY_PIN, ANALOG);
+    pinMode(LORA_DIO1_PIN, ANALOG);
+    pinMode(SPI_SCK_PIN, ANALOG);
+    pinMode(SPI_MISO_PIN, ANALOG);
+    pinMode(SPI_MOSI_PIN, ANALOG);
 
-    // Calcular la pendiente S usando mínimos cuadrados
-    double S_CAL = ((n * sum_pHV) - (sum_pH * sum_V)) / ((n * sum_pH2) - (sum_pH * sum_pH));
+    pinMode(20, ANALOG); //Serial RX
+    pinMode(21, ANALOG); //Serial TX
 
-    // Calcular el offset E0 usando mínimos cuadrados
-    double E0 = ((sum_V) + (S_CAL * sum_pH)) / n;
+    pinMode(I2C_SDA_PIN, ANALOG); //I2C SDA
+    pinMode(I2C_SCL_PIN, ANALOG); //I2C SCL
 
-    // Ajustar la pendiente según la temperatura actual usando la ecuación de Nernst
-    const double tempK = (tempC + 273.15);
-    const double tempCalK = (TEMP_CAL + 273.15);
-    const double S_T = S_CAL * (tempK / tempCalK);
+    pinMode(9, ANALOG); //LORA NSS
 
-    // Calcular pH usando la ecuación de Nernst ajustada: pH = (E0 - E) / S(T)
-    double pH = ((E0 + voltage) / S_T);
-    // Limitar el pH a un rango físicamente posible (0-14)
-    pH = constrain(pH, 0.0, 14.0);
-
-    return pH;
+    // Configurar explícitamente LORA_NSS_PIN como salida en alto para mantener el chip select del módulo LoRa desactivado
+    pinMode(LORA_NSS_PIN, OUTPUT);
+    digitalWrite(LORA_NSS_PIN, HIGH);
+    gpio_hold_en((gpio_num_t)LORA_NSS_PIN);
+#endif
 }
 
 /**
- * @brief Lee el sensor de pH conectado al canal AIN7 del ADC
- * 
- * @return float Valor de pH (0-14), o NAN si hay error
+ * @brief Libera el estado de retención (hold) de los pines que fueron configurados para deep sleep.
+ * Esto permite que los pines puedan ser reconfigurados adecuadamente tras salir del deep sleep.
  */
-float PHSensor::read() {
-    // Asegurarse de que el ADC esté despierto
-    ADC.sendCommand(WAKE_OPCODE_MASK);
+void SleepManager::releaseHeldPins() {
+    // Liberar específicamente el pin NSS de LoRa
+    gpio_hold_dis((gpio_num_t)LORA_NSS_PIN);
     
-    // Configurar el multiplexor para leer AIN7 con referencia a AINCOM (tierra)
-    uint8_t muxConfig = ADS_P_AIN7 | ADS_N_AINCOM;
-    
-    // Realizar una única lectura del sensor
-    float voltage = AdcUtilities::measureAdcDifferential(muxConfig);
-    
-    // Verificar si el voltaje es válido
-    if (isnan(voltage) || voltage < -2.5f || voltage > 2.5f) {
-        return NAN;
-    }
-    
-    // Obtener temperatura únicamente del sensor NTC10K
-    float waterTemp = NtcManager::readNtc10kTemperature();
-    
-    // Convertir a pH con compensación de temperatura
-    float pHValue = convertVoltageToPH(voltage, waterTemp);
-    
-    return pHValue;
+    // Liberar otros pines si se ha aplicado retención
+    // Nota: Los pines configurados como ANALOG no necesitan liberación específica
+    // ya que no se les aplica retención (gpio_hold_en)
 }
 
-#endif // DEVICE_TYPE_ANALOGIC
+================
+File: include/config_manager.h
+================
+#pragma once
+#include <Preferences.h>
+#include <vector>
+#include <Arduino.h>  // Se incluye para utilizar el tipo String
+#include "sensor_types.h"
+#include <RadioLib.h> // Añadido para RADIOLIB_LORAWAN_SESSION_BUF_SIZE
+#include "config.h"
+
+// Definición de la estructura para la configuración de LoRa
+struct LoRaConfig {
+    //FOR OTAA
+    String joinEUI;
+    String devEUI;
+    String nwkKey;
+    String appKey;
+};
+
+class ConfigManager {
+public:
+    /* =========================================================================
+       INICIALIZACIÓN Y CONFIGURACIÓN DEL SISTEMA
+       ========================================================================= */
+    // Verificación e inicialización
+    static bool checkInitialized();
+    static void initializeDefaultConfig();
+    
+    // Configuración del sistema
+    static void getSystemConfig(bool &initialized, uint32_t &sleepTime, String &deviceId, String &stationId);
+    static void setSystemConfig(bool initialized, uint32_t sleepTime, const String &deviceId, const String &stationId);
+
+    /* =========================================================================
+       CONFIGURACIÓN DE SENSORES NO-MODBUS
+       ========================================================================= */
+    // Gestión de sensores generales
+    static void setSensorsConfigs(const std::vector<SensorConfig>& configs);
+    static std::vector<SensorConfig> getAllSensorConfigs();
+    static std::vector<SensorConfig> getEnabledSensorConfigs();
+
+#if defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
+    /* =========================================================================
+       CONFIGURACIÓN DE SENSORES MODBUS
+       ========================================================================= */
+    static void setModbusSensorsConfigs(const std::vector<ModbusSensorConfig>& configs);
+    static std::vector<ModbusSensorConfig> getAllModbusSensorConfigs();
+    static std::vector<ModbusSensorConfig> getEnabledModbusSensorConfigs();
+#endif
+    
+    /* =========================================================================
+       CONFIGURACIÓN DE LORA
+       ========================================================================= */
+    static LoRaConfig getLoRaConfig();
+    static void setLoRaConfig(
+        const String &joinEUI, 
+        const String &devEUI, 
+        const String &nwkKey, 
+        const String &appKey);
+    
+#ifdef DEVICE_TYPE_ANALOGIC
+    /* =========================================================================
+       CONFIGURACIÓN DE SENSORES ANALÓGICOS (Solo para dispositivo analógico)
+       ========================================================================= */
+    // NTC 100K
+    static void getNTC100KConfig(double& t1, double& r1, double& t2, double& r2, double& t3, double& r3);
+    static void setNTC100KConfig(double t1, double r1, double t2, double r2, double t3, double r3);
+    
+    // NTC 10K
+    static void getNTC10KConfig(double& t1, double& r1, double& t2, double& r2, double& t3, double& r3);
+    static void setNTC10KConfig(double t1, double r1, double t2, double r2, double t3, double r3);
+    
+    // Conductividad
+    static void getConductivityConfig(float& calTemp, float& coefComp, 
+                                    float& v1, float& t1, float& v2, float& t2, float& v3, float& t3);
+    static void setConductivityConfig(float calTemp, float coefComp,
+                                    float v1, float t1, float v2, float t2, float v3, float t3);
+    
+    // pH
+    static void getPHConfig(float& v1, float& t1, float& v2, float& t2, float& v3, float& t3, float& defaultTemp);
+    static void setPHConfig(float v1, float t1, float v2, float t2, float v3, float t3, float defaultTemp);
+#endif
+
+private:
+    // Configuraciones por defecto
+    static const SensorConfig defaultConfigs[]; // Configs no-Modbus
+#if defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
+    static const ModbusSensorConfig defaultModbusSensors[]; // Configs Modbus
+#endif
+};
 
 ================
 File: include/ModbusSensorManager.h
@@ -3611,10 +4452,11 @@ public:
     static void endModbus();
 
     /**
-     * @brief Lee un sensor Modbus de tipo ENV_SENSOR (ejemplo del datasheet).
-     *        Regresa la lectura con subvalores (T, H, Ruido, PM2.5, PM10, Presión, Iluminación).
+     * @brief Lee un sensor Modbus de tipo ENV_SENSOR.
+     *        Regresa la lectura con valores en el siguiente orden:
+     *        [0]=Humedad(%), [1]=Temperatura(°C), [2]=Presión(kPa), [3]=Iluminación(lux)
      * @param cfg Configuración del sensor (dirección, etc.)
-     * @return Estructura ModbusSensorReading con los subvalores.
+     * @return Estructura ModbusSensorReading con los valores en el orden establecido.
      */
     static ModbusSensorReading readEnvSensor(const ModbusSensorConfig &cfg);
 
@@ -4096,6 +4938,73 @@ int ADS124S08::dataRead(uint8_t *dStatus, uint8_t *dData, uint8_t *dCRC)
 #endif // DEVICE_TYPE_ANALOGIC
 
 ================
+File: include/HardwareManager.h
+================
+/*******************************************************************************************
+ * Archivo: include/HardwareManager.h
+ * Descripción: Gestión de inicialización y configuración del hardware del sistema.
+ * Incluye funciones para inicialización de periféricos y control de energía.
+ *******************************************************************************************/
+
+#ifndef HARDWARE_MANAGER_H
+#define HARDWARE_MANAGER_H
+
+#include <Arduino.h>
+#include <Wire.h>
+#include <SPI.h>
+#include "config.h"
+#include "PowerManager.h"
+#include "clsPCA9555.h"
+#include "SHT31.h"
+#include "sensor_types.h"
+#include <vector>
+
+class HardwareManager {
+public:
+    /**
+     * @brief Inicializa el bus I2C, la expansión de I/O y el PowerManager.
+     * @param ioExpander Referencia al expansor de I/O
+     * @param powerManager Referencia al gestor de energía
+     * @param sht30Sensor Referencia al sensor SHT30
+     * @param spi Referencia a la interfaz SPI
+     * @param enabledNormalSensors Vector con las configuraciones de sensores habilitados
+     * @return true si la inicialización fue exitosa, false en caso contrario
+     */
+    static bool initHardware(PCA9555& ioExpander, PowerManager& powerManager, 
+                           SHT31& sht30Sensor, SPIClass& spi,
+                           const std::vector<SensorConfig>& enabledNormalSensors);
+
+    /**
+     * @brief Inicializa los pines de selección SPI (SS)
+     */
+    static void initializeSPISSPins();
+
+};
+
+#endif // HARDWARE_MANAGER_H
+
+================
+File: include/utilities.h
+================
+#ifndef UTILITIES_H
+#define UTILITIES_H
+
+#include <Arduino.h>
+
+void parseKeyString(const String &keyStr, uint8_t *outArray, size_t expectedSize);
+bool parseEUIString(const char* euiStr, uint64_t* eui);
+
+/**
+ * @brief Formatea un valor flotante con hasta 3 decimales, eliminando ceros finales.
+ * @param value Valor flotante a formatear.
+ * @param buffer Buffer donde se almacenará la cadena formateada.
+ * @param bufferSize Tamaño del buffer.
+ */
+void formatFloatTo3Decimals(float value, char* buffer, size_t bufferSize);
+
+#endif // UTILITIES_H
+
+================
 File: src/BLE.cpp
 ================
 /*******************************************************************************************
@@ -4105,34 +5014,46 @@ File: src/BLE.cpp
 
 #include "BLE.h"
 
+// Inicialización de variables estáticas
+bool BLEHandler::isConnected = false;
+unsigned long BLEHandler::connectionStartTime = 0;
+BLEServer* BLEHandler::pBLEServer = nullptr;
+bool BLEHandler::shouldExitOnDisconnect = false;
+
 // Implementación de los métodos de la clase ServerCallbacks
 void BLEHandler::ServerCallbacks::onConnect(BLEServer* pServer) {
-    DEBUG_PRINTLN(F("BLE Cliente conectado"));
+    BLEHandler::isConnected = true;
+    BLEHandler::connectionStartTime = millis();
+    BLEHandler::shouldExitOnDisconnect = true; // Establecer que debemos salir al desconectar
 }
 
 void BLEHandler::ServerCallbacks::onDisconnect(BLEServer* pServer) {
-    DEBUG_PRINTLN(F("BLE Cliente desconectado, reiniciando publicidad..."));
+    BLEHandler::isConnected = false;
     pServer->getAdvertising()->start();
+    // No reiniciamos shouldExitOnDisconnect aquí, eso lo manejamos en runConfigLoop
 }
 
 // Implementación de los métodos de BLEHandler
 bool BLEHandler::checkConfigMode(PCA9555& ioExpander) {
     if (digitalRead(CONFIG_PIN) == LOW) {
-        DEBUG_PRINTLN("Modo configuración activado");
         unsigned long startTime = millis();
         while (digitalRead(CONFIG_PIN) == LOW) {
             if (millis() - startTime >= CONFIG_TRIGGER_TIME) {
+                // Reiniciar variables de estado
+                isConnected = false;
+                shouldExitOnDisconnect = false;
+                
                 // Obtener configuración LoRa para el nombre BLE
                 LoRaConfig loraConfig = ConfigManager::getLoRaConfig();
                 String bleName = BLE_DEVICE_PREFIX + String(loraConfig.devEUI);
                 
                 // Inicializar BLE
                 BLEDevice::init(bleName.c_str());
-                BLEServer* pServer = BLEDevice::createServer();
-                pServer->setCallbacks(new ServerCallbacks());
+                pBLEServer = BLEDevice::createServer();
+                pBLEServer->setCallbacks(new ServerCallbacks());
                 
                 // Configurar servicio BLE
-                BLEService* pService = setupService(pServer);
+                BLEService* pService = setupService(pBLEServer);
                 
                 // Configurar publicidad BLE
                 BLEAdvertising* pAdvertising = BLEDevice::getAdvertising();
@@ -4160,12 +5081,44 @@ BLEServer* BLEHandler::initBLE(const String& devEUI) {
 }
 
 void BLEHandler::runConfigLoop(PCA9555& ioExpander) {
-    // Bucle de parpadeo del LED de configuración
+    unsigned long startTime = millis();
+    const unsigned long timeout = CONFIG_BLE_WAIT_TIMEOUT; // Usar constante de config.h
+
     while (true) {
-        ioExpander.digitalWrite(CONFIG_LED_PIN, HIGH);
-        delay(500);
-        ioExpander.digitalWrite(CONFIG_LED_PIN, LOW);
-        delay(500);
+        // Verificar si debemos salir por desconexión de cliente
+        if (shouldExitOnDisconnect && !isConnected) {
+            BLEDevice::getAdvertising()->stop();
+            shouldExitOnDisconnect = false; // Resetear la bandera
+            break;
+        }
+        
+        // Timeout para esperar conexión
+        if (millis() - startTime >= timeout && !BLEHandler::isConnected) {
+            BLEDevice::getAdvertising()->stop();
+            break;
+        }
+        
+        // Timeout para conexión activa
+        if (BLEHandler::isConnected && (millis() - BLEHandler::connectionStartTime >= BLEHandler::connectionTimeout)) {
+            if (pBLEServer) {
+                pBLEServer->disconnect(0); // Desconectar todos los clientes
+                BLEHandler::isConnected = false;
+                BLEDevice::getAdvertising()->start();
+            }
+        }
+        
+        // Control del LED según estado de conexión
+        if (BLEHandler::isConnected) {
+            // Cliente conectado, LED fijo
+            ioExpander.digitalWrite(CONFIG_LED_PIN, HIGH);
+            delay(1000);
+        } else {
+            // Esperando conexión, LED parpadeando
+            ioExpander.digitalWrite(CONFIG_LED_PIN, HIGH);
+            delay(250);
+            ioExpander.digitalWrite(CONFIG_LED_PIN, LOW);
+            delay(250);
+        }
     }
 }
 
@@ -4716,703 +5669,6 @@ void BLEHandler::LoRaConfigCallback::onRead(BLECharacteristic* pCharacteristic) 
 }
 
 ================
-File: src/HardwareManager.cpp
-================
-/*******************************************************************************************
- * Archivo: src/HardwareManager.cpp
- * Descripción: Implementación de la gestión de hardware del sistema.
- *******************************************************************************************/
-
-#include "HardwareManager.h"
-#include "debug.h"
-
-// time execution < 10 ms
-bool HardwareManager::initHardware(PCA9555& ioExpander, PowerManager& powerManager, SensirionI2cSht3x& sht30Sensor, SPIClass& spi) {
-    #ifdef DEVICE_TYPE_ANALOGIC || DEVICE_TYPE_BASIC
-    // Configurar GPIO one wire con pull-up
-    pinMode(ONE_WIRE_BUS, INPUT_PULLUP);
-    #endif
-    
-    // Inicializar I2C con pines definidos
-    Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN);
-    
-    // Inicializar SPI con pines definidos
-    spi.begin(SPI_SCK_PIN, SPI_MISO_PIN, SPI_MOSI_PIN);
-
-    //Inicializar SHT30 para reset y dummy lectura
-    sht30Sensor.begin(Wire, SHT30_I2C_ADDR_44);
-    sht30Sensor.stopMeasurement();
-    sht30Sensor.softReset();
-
-    // // time execution ≈ 13 ms
-    // float dummyTemp = 0.0f, dummyHum = 0.0f;
-    // sht30Sensor.measureSingleShot(REPEATABILITY_HIGH, false, dummyTemp, dummyHum);
-    // ////////////////////////////////////////////////////////////////
-    
-    //Inicializar PCA9555 para expansión de I/O
-    if (!ioExpander.begin()) {
-        DEBUG_PRINTLN("Error al inicializar PCA9555");
-        return false;
-    }
-    
-    // Inicializar los pines de selección SPI (SS)
-    initializeSPISSPins();
-    
-    // Inicializar PowerManager para control de energía
-    powerManager.begin();
-    
-    return true;
-}
-
-void HardwareManager::initializeSPISSPins() {
-    // Inicializar SS del LORA conectado directamente
-    pinMode(LORA_NSS_PIN, OUTPUT);
-    digitalWrite(LORA_NSS_PIN, HIGH);
-
-    // Inicializar SS conectados al expansor
-    extern PCA9555 ioExpander;
-    ioExpander.pinMode(PT100_CS_PIN, OUTPUT); // ss de p100
-    ioExpander.digitalWrite(PT100_CS_PIN, HIGH);
-
-#ifdef DEVICE_TYPE_ANALOGIC
-    ioExpander.pinMode(ADS124S08_CS_PIN, OUTPUT); // ss del adc
-    ioExpander.digitalWrite(ADS124S08_CS_PIN, HIGH);
-#endif
-}
-
-================
-File: src/MAX31865.cpp
-================
-#include "MAX31865.h"
-#include <math.h>   // Para sqrt
-
-/**
- * @brief Constructor con PCA9555.
- */
-MAX31865_RTD::MAX31865_RTD(
-    ptd_type type,
-    SPIClass& spi,
-    SPISettings& spiSettings,
-    PCA9555& pca,
-    uint8_t pcaPinCS
-)
-{
-  _spi = &spi;
-  _spiSettings = &spiSettings;
-  this->type = type;
-  this->_usePCA = true;
-  this->_pca = &pca;
-  this->_pcaPinCS = pcaPinCS;
-  this->_csPinMCU = 0xFF;
-}
-
-/**
- * @brief Constructor con pin nativo de MCU.
- */
-MAX31865_RTD::MAX31865_RTD(
-    ptd_type type,
-    SPIClass& spi,
-    SPISettings& spiSettings,
-    uint8_t csPin
-)
-{
-  _spi = &spi;
-  _spiSettings = &spiSettings;
-  this->type = type;
-  this->_usePCA = false;
-  this->_pca = nullptr;
-  this->_pcaPinCS = 0xFF;
-  this->_csPinMCU = csPin;
-}
-
-// -----------------------------------------------------------------------
-void MAX31865_RTD::configure(bool v_bias, bool conversion_mode, bool one_shot,
-                             bool three_wire, uint8_t fault_cycle, bool fault_clear,
-                             bool filter_50hz,
-                             uint16_t low_threshold,
-                             uint16_t high_threshold)
-{
-  uint8_t control_bits = 0;
-  // Arma la máscara
-  control_bits |= (v_bias ? 0x80 : 0);
-  control_bits |= (conversion_mode ? 0x40 : 0);
-  control_bits |= (one_shot ? 0x20 : 0);
-  control_bits |= (three_wire ? 0x10 : 0);
-  control_bits |= (fault_cycle & 0b00001100);
-  control_bits |= (fault_clear ? 0x02 : 0);
-  control_bits |= (filter_50hz ? 0x01 : 0);
-
-  this->configuration_control_bits   = control_bits;
-  this->configuration_low_threshold  = low_threshold;
-  this->configuration_high_threshold = high_threshold;
-
-  // Llama a reconfigure() para escribir valores
-  reconfigure();
-}
-
-// -----------------------------------------------------------------------
-void MAX31865_RTD::reconfigure()
-{
-  // Inicia transacción SPI
-  _spi->beginTransaction(*_spiSettings);
-
-  // Escribe config
-  setCSLow();
-  _spi->transfer(0x80); // Dirección de escritura del registro config
-  _spi->transfer(this->configuration_control_bits);
-  setCSHigh();
-
-  // Umbrales
-  setCSLow();
-  _spi->transfer(0x83); // Registro de umbrales
-  _spi->transfer( (this->configuration_high_threshold >> 8) & 0xFF );
-  _spi->transfer(  this->configuration_high_threshold       & 0xFF );
-  _spi->transfer( (this->configuration_low_threshold  >> 8) & 0xFF );
-  _spi->transfer(  this->configuration_low_threshold        & 0xFF );
-  setCSHigh();
-
-  // Cierra transacción
-  _spi->endTransaction();
-}
-
-// -----------------------------------------------------------------------
-uint8_t MAX31865_RTD::read_all()
-{
-  uint16_t combined_bytes = 0;
-
-  _spi->beginTransaction(*_spiSettings);
-
-  setCSLow();
-  // Indica que leeremos desde la dirección 0 (se manda 0x00)
-  _spi->transfer(0x00);
-
-  // Orden de lectura: Config, RTD, High Fault Th, Low Fault Th, Status
-  measured_configuration = _spi->transfer(0x00);
-
-  combined_bytes  = ((uint16_t)_spi->transfer(0x00) << 8);
-  combined_bytes |=          _spi->transfer(0x00);
-  measured_resistance = (combined_bytes >> 1);
-
-  combined_bytes  = ((uint16_t)_spi->transfer(0x00) << 8);
-  combined_bytes |=          _spi->transfer(0x00);
-  measured_high_threshold = (combined_bytes >> 1);
-
-  combined_bytes  = ((uint16_t)_spi->transfer(0x00) << 8);
-  combined_bytes |=          _spi->transfer(0x00);
-  measured_low_threshold = (combined_bytes >> 1);
-
-  measured_status = _spi->transfer(0x00);
-
-  delayMicroseconds(20);
-  setCSHigh();
-  _spi->endTransaction();
-
-  // Reconfigura si resistencia=0 o hay falla
-  if ((measured_resistance == 0) || (measured_status != 0)) {
-    reconfigure();
-  }
-  return measured_status;
-}
-
-// -----------------------------------------------------------------------
-double MAX31865_RTD::temperature() const
-{
-  // Si hay error o resistencia inválida, retornar NAN
-  if (measured_status != 0 || measured_resistance == 0) {
-    return NAN;
-  }
-
-  // Callendar-Van Dusen
-  static const double a2 = 2.0 * RTD_B;
-  static const double b_sq = (RTD_A * RTD_A);
-  double rtd_resistance = (type == RTD_PT100) ? RTD_RESISTANCE_PT100 : RTD_RESISTANCE_PT1000;
-
-  double c = 1.0 - (resistance() / rtd_resistance);
-  double D = b_sq - 2.0 * a2 * c;
-  
-  // Verificar si la ecuación cuadrática tiene solución real
-  if (D < 0) {
-    return NAN;
-  }
-  
-  double tempC = (-RTD_A + sqrt(D)) / a2;
-
-  return tempC;
-}
-
-void MAX31865_RTD::setCSLow() {
-  if (_usePCA && _pca) {
-    _pca->digitalWrite(_pcaPinCS, LOW);
-    delayMicroseconds(5);
-  } else {
-    digitalWrite(_csPinMCU, LOW);
-  }
-}
-
-void MAX31865_RTD::setCSHigh() {
-  if (_usePCA && _pca) {
-    _pca->digitalWrite(_pcaPinCS, HIGH);
-  } else {
-    digitalWrite(_csPinMCU, HIGH);
-  }
-}
-
-double MAX31865_RTD::singleMeasurement(uint16_t conversionDelayMs) {
-    // Activar BIAS
-    uint8_t originalConfig = configuration_control_bits;
-    configuration_control_bits |= 0x80;  // Set VBIAS on
-    reconfigure();
-    
-    delay(10);  // Esperar a que VBIAS se estabilice
-    
-    // Iniciar conversión única
-    configuration_control_bits |= 0x20;  // Set one-shot bit
-    reconfigure();
-    
-    // Esperar a que la conversión termine
-    delay(conversionDelayMs);
-    
-    // Leer resultado
-    read_all();
-    
-    // Desactivar BIAS y one-shot
-    configuration_control_bits = originalConfig;
-    reconfigure();
-    
-    return temperature();
-}
-
-// Nuevo método begin para inicializar los pines
-bool MAX31865_RTD::begin() {
-    if (_usePCA && _pca) {
-        _pca->pinMode(_pcaPinCS, OUTPUT);
-        _pca->digitalWrite(_pcaPinCS, HIGH);
-    } else {
-        pinMode(_csPinMCU, OUTPUT);
-        digitalWrite(_csPinMCU, HIGH);
-    }
-    return true;
-}
-
-================
-File: src/SleepManager.cpp
-================
-/*******************************************************************************************
- * Archivo: src/SleepManager.cpp
- * Descripción: Implementación de la gestión del modo deep sleep para el ESP32.
- *******************************************************************************************/
-
-#include "SleepManager.h"
-#include "debug.h"
-#include "LoRaManager.h"
-
-void SleepManager::goToDeepSleep(uint32_t timeToSleep, 
-                               PowerManager& powerManager,
-                               PCA9555& ioExpander,
-                               SX1262* radio,
-                               LoRaWANNode& node,
-                               uint8_t* LWsession,
-                               SPIClass& spi) {
-    // Guardar sesión en RTC y otras rutinas de apagado
-    uint8_t *persist = node.getBufferSession();
-    memcpy(LWsession, persist, RADIOLIB_LORAWAN_SESSION_BUF_SIZE);
-    
-    // Apagar todos los reguladores
-    powerManager.allPowerOff();
-    
-    // Flush Serial antes de dormir
-    DEBUG_FLUSH();
-    DEBUG_END();
-    
-    // Apagar módulos
-    LoRaManager::prepareForSleep(radio);
-    btStop();
-
-    // Poner el PCA9555 en modo sleep
-    ioExpander.sleep();
-
-    // Deshabilitar I2C y SPI
-    Wire.end();
-    spi.end();
-    
-    // Configurar el temporizador y GPIO para despertar
-    esp_sleep_enable_timer_wakeup(timeToSleep * 1000000ULL);
-    gpio_wakeup_enable((gpio_num_t)CONFIG_PIN, GPIO_INTR_LOW_LEVEL);
-    esp_sleep_enable_gpio_wakeup();
-    esp_deep_sleep_enable_gpio_wakeup(BIT(CONFIG_PIN), ESP_GPIO_WAKEUP_GPIO_LOW);
-    
-    // Configurar pines para deep sleep
-    configurePinsForDeepSleep();
-    
-    esp_deep_sleep_start();
-}
-
-/**
- * @brief Configura los pines no utilizados en alta impedancia para reducir el consumo durante deep sleep.
- */
-void SleepManager::configurePinsForDeepSleep() {
-#ifdef DEVICE_TYPE_BASIC
-    // Configurar pines específicos del módulo LoRa como ANALOG para DEVICE_TYPE_BASIC
-    pinMode(ONE_WIRE_BUS, ANALOG);
-    pinMode(BATTERY_PIN, ANALOG);
-
-    pinMode(LORA_RST_PIN, ANALOG);
-    pinMode(LORA_BUSY_PIN, ANALOG);
-    pinMode(LORA_DIO1_PIN, ANALOG);
-    pinMode(SPI_SCK_PIN, ANALOG);
-    pinMode(SPI_MISO_PIN, ANALOG);
-    pinMode(SPI_MOSI_PIN, ANALOG);
-
-    pinMode(20, ANALOG); //Serial RX
-    pinMode(21, ANALOG); //Serial TX
-
-    pinMode(I2C_SDA_PIN, ANALOG); //I2C SDA
-    pinMode(I2C_SCL_PIN, ANALOG); //I2C SCL
-
-    pinMode(9, ANALOG); //LORA NSS
-
-    // Configurar explícitamente LORA_NSS_PIN como salida en alto para mantener el chip select del módulo LoRa desactivado
-    pinMode(LORA_NSS_PIN, OUTPUT);
-    digitalWrite(LORA_NSS_PIN, HIGH);
-    gpio_hold_en((gpio_num_t)LORA_NSS_PIN);
-#endif
-
-#ifdef DEVICE_TYPE_ANALOGIC
-    // Configurar pines específicos del módulo LoRa como ANALOG para DEVICE_TYPE_ANALOGIC
-    pinMode(FLOW_SENSOR_PIN, ANALOG);
-    pinMode(ONE_WIRE_BUS, ANALOG);
-
-    pinMode(LORA_RST_PIN, ANALOG);
-    pinMode(LORA_BUSY_PIN, ANALOG);
-    pinMode(LORA_DIO1_PIN, ANALOG);
-    pinMode(SPI_SCK_PIN, ANALOG);
-    pinMode(SPI_MISO_PIN, ANALOG);
-    pinMode(SPI_MOSI_PIN, ANALOG);
-
-    pinMode(20, ANALOG); //Serial RX
-    pinMode(21, ANALOG); //Serial TX
-
-    pinMode(I2C_SDA_PIN, ANALOG); //I2C SDA
-    pinMode(I2C_SCL_PIN, ANALOG); //I2C SCL
-
-    pinMode(9, ANALOG); //LORA NSS
-
-    // Configurar explícitamente LORA_NSS_PIN como salida en alto para mantener el chip select del módulo LoRa desactivado
-    pinMode(LORA_NSS_PIN, OUTPUT);
-    digitalWrite(LORA_NSS_PIN, HIGH);
-    gpio_hold_en((gpio_num_t)LORA_NSS_PIN);
-#endif
-
-#ifdef DEVICE_TYPE_MODBUS
-    // Configurar pines específicos del módulo LoRa como ANALOG para DEVICE_TYPE_MODBUS
-    pinMode(FLOW_SENSOR_PIN, ANALOG);
-    pinMode(BATTERY_PIN, ANALOG);
-
-    pinMode(LORA_RST_PIN, ANALOG);
-    pinMode(LORA_BUSY_PIN, ANALOG);
-    pinMode(LORA_DIO1_PIN, ANALOG);
-    pinMode(SPI_SCK_PIN, ANALOG);
-    pinMode(SPI_MISO_PIN, ANALOG);
-    pinMode(SPI_MOSI_PIN, ANALOG);
-
-    pinMode(20, ANALOG); //Serial RX
-    pinMode(21, ANALOG); //Serial TX
-
-    pinMode(I2C_SDA_PIN, ANALOG); //I2C SDA
-    pinMode(I2C_SCL_PIN, ANALOG); //I2C SCL
-
-    pinMode(9, ANALOG); //LORA NSS
-
-    // Configurar explícitamente LORA_NSS_PIN como salida en alto para mantener el chip select del módulo LoRa desactivado
-    pinMode(LORA_NSS_PIN, OUTPUT);
-    digitalWrite(LORA_NSS_PIN, HIGH);
-    gpio_hold_en((gpio_num_t)LORA_NSS_PIN);
-#endif
-}
-
-/**
- * @brief Libera el estado de retención (hold) de los pines que fueron configurados para deep sleep.
- * Esto permite que los pines puedan ser reconfigurados adecuadamente tras salir del deep sleep.
- */
-void SleepManager::releaseHeldPins() {
-    // Liberar específicamente el pin NSS de LoRa
-    gpio_hold_dis((gpio_num_t)LORA_NSS_PIN);
-    
-    // Liberar otros pines si se ha aplicado retención
-    // Nota: Los pines configurados como ANALOG no necesitan liberación específica
-    // ya que no se les aplica retención (gpio_hold_en)
-}
-
-================
-File: include/config_manager.h
-================
-#pragma once
-#include <Preferences.h>
-#include <vector>
-#include <Arduino.h>  // Se incluye para utilizar el tipo String
-#include "sensor_types.h"
-#include <RadioLib.h> // Añadido para RADIOLIB_LORAWAN_SESSION_BUF_SIZE
-#include "config.h"
-
-// Definición de la estructura para la configuración de LoRa
-struct LoRaConfig {
-    //FOR OTAA
-    String joinEUI;
-    String devEUI;
-    String nwkKey;
-    String appKey;
-};
-
-class ConfigManager {
-public:
-    /* =========================================================================
-       INICIALIZACIÓN Y CONFIGURACIÓN DEL SISTEMA
-       ========================================================================= */
-    // Verificación e inicialización
-    static bool checkInitialized();
-    static void initializeDefaultConfig();
-    
-    // Configuración del sistema
-    static void getSystemConfig(bool &initialized, uint32_t &sleepTime, String &deviceId, String &stationId);
-    static void setSystemConfig(bool initialized, uint32_t sleepTime, const String &deviceId, const String &stationId);
-
-    /* =========================================================================
-       CONFIGURACIÓN DE SENSORES NO-MODBUS
-       ========================================================================= */
-    // Gestión de sensores generales
-    static void setSensorsConfigs(const std::vector<SensorConfig>& configs);
-    static std::vector<SensorConfig> getAllSensorConfigs();
-    static std::vector<SensorConfig> getEnabledSensorConfigs();
-
-#if defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
-    /* =========================================================================
-       CONFIGURACIÓN DE SENSORES MODBUS
-       ========================================================================= */
-    static void setModbusSensorsConfigs(const std::vector<ModbusSensorConfig>& configs);
-    static std::vector<ModbusSensorConfig> getAllModbusSensorConfigs();
-    static std::vector<ModbusSensorConfig> getEnabledModbusSensorConfigs();
-#endif
-    
-    /* =========================================================================
-       CONFIGURACIÓN DE LORA
-       ========================================================================= */
-    static LoRaConfig getLoRaConfig();
-    static void setLoRaConfig(
-        const String &joinEUI, 
-        const String &devEUI, 
-        const String &nwkKey, 
-        const String &appKey);
-    
-#ifdef DEVICE_TYPE_ANALOGIC
-    /* =========================================================================
-       CONFIGURACIÓN DE SENSORES ANALÓGICOS (Solo para dispositivo analógico)
-       ========================================================================= */
-    // NTC 100K
-    static void getNTC100KConfig(double& t1, double& r1, double& t2, double& r2, double& t3, double& r3);
-    static void setNTC100KConfig(double t1, double r1, double t2, double r2, double t3, double r3);
-    
-    // NTC 10K
-    static void getNTC10KConfig(double& t1, double& r1, double& t2, double& r2, double& t3, double& r3);
-    static void setNTC10KConfig(double t1, double r1, double t2, double r2, double t3, double r3);
-    
-    // Conductividad
-    static void getConductivityConfig(float& calTemp, float& coefComp, 
-                                    float& v1, float& t1, float& v2, float& t2, float& v3, float& t3);
-    static void setConductivityConfig(float calTemp, float coefComp,
-                                    float v1, float t1, float v2, float t2, float v3, float t3);
-    
-    // pH
-    static void getPHConfig(float& v1, float& t1, float& v2, float& t2, float& v3, float& t3, float& defaultTemp);
-    static void setPHConfig(float v1, float t1, float v2, float t2, float v3, float t3, float defaultTemp);
-#endif
-
-private:
-    // Configuraciones por defecto
-    static const SensorConfig defaultConfigs[]; // Configs no-Modbus
-#if defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
-    static const ModbusSensorConfig defaultModbusSensors[]; // Configs Modbus
-#endif
-};
-
-================
-File: include/utilities.h
-================
-#ifndef UTILITIES_H
-#define UTILITIES_H
-
-#include <Arduino.h>
-
-void parseKeyString(const String &keyStr, uint8_t *outArray, size_t expectedSize);
-bool parseEUIString(const char* euiStr, uint64_t* eui);
-
-/**
- * @brief Formatea un valor flotante con hasta 3 decimales, eliminando ceros finales.
- * @param value Valor flotante a formatear.
- * @param buffer Buffer donde se almacenará la cadena formateada.
- * @param bufferSize Tamaño del buffer.
- */
-void formatFloatTo3Decimals(float value, char* buffer, size_t bufferSize);
-
-#endif // UTILITIES_H
-
-================
-File: src/ModbusSensorManager.cpp
-================
-#include "ModbusSensorManager.h"
-#include "config.h"    // Para SERIAL_BAUD
-
-#if defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
-
-#include "ModbusMaster.h"
-#include "debug.h"     // Para DEBUG_END
-#include "sensor_types.h" // Para ENV4Keys
-#include "sensor_constants.h" // Para SensorKeys
-#include "utilities.h"
-#include <string.h>
-
-// Crear una instancia global de ModbusMaster
-ModbusMaster modbus;
-
-/**
- * @note 
- *  - Se usa la biblioteca ModbusMaster para la comunicación Modbus
- *  - Se asume que el pin DE/RE del transceiver RS485 está atado de forma que cuando
- *    se escribe en Serial, se habilita la transmisión, y al terminar, pasa a recepción.
- */
-
-void ModbusSensorManager::beginModbus() {
-    // Configurar Serial usando los parámetros definidos en config.h
-    Serial.begin(MODBUS_BAUDRATE, MODBUS_SERIAL_CONFIG);
-    
-    // Inicializar ModbusMaster
-    modbus.begin(0, Serial); // El slave ID se configurará en cada petición
-}
-
-void ModbusSensorManager::endModbus() {
-    // Finalizar la comunicación Serial de Modbus
-    Serial.end();
-}
-
-bool ModbusSensorManager::readHoldingRegisters(uint8_t address, uint16_t startReg, uint16_t numRegs, uint16_t* outData) {
-    // Guardar los bytes recibidos para depuración posterior
-    uint8_t result;
-    
-    // Establecer el slave ID
-    modbus.begin(address, Serial);
-    
-    // Implementar reintentos de lectura
-    for (uint8_t retry = 0; retry < MODBUS_MAX_RETRY; retry++) {
-        // Registrar el tiempo de inicio para implementar timeout manual
-        uint32_t startTime = millis();
-        
-        // Realizar la petición Modbus para leer registros holding
-        result = modbus.readHoldingRegisters(startReg, numRegs);
-        
-        // Verificar si la lectura fue exitosa
-        if (result == modbus.ku8MBSuccess) {
-            // Extraer datos de los registros
-            for (uint8_t i = 0; i < numRegs; i++) {
-                outData[i] = modbus.getResponseBuffer(i);
-            }
-            
-            return true;
-        }
-        
-        // Verificar si se agotó el tiempo (timeout personalizado)
-        if ((millis() - startTime) >= MODBUS_RESPONSE_TIMEOUT) {
-            DEBUG_PRINTLN("Timeout en comunicación Modbus");
-            break; // Salir del bucle de reintentos si se agota el tiempo
-        }
-        
-        // Si no es el último intento, continuar con el siguiente intento
-        DEBUG_PRINTF("Intento %d fallido, código: %d\n", retry + 1, result);
-    }
-    
-    // Si llegamos aquí, todos los intentos fallaron
-    DEBUG_PRINTF("Error Modbus después de %d intentos\n", MODBUS_MAX_RETRY);
-    return false;
-}
-
-ModbusSensorReading ModbusSensorManager::readEnvSensor(const ModbusSensorConfig &cfg) {
-    ModbusSensorReading reading;
-    strncpy(reading.sensorId, cfg.sensorId, sizeof(reading.sensorId));
-    reading.type = cfg.type;
-    reading.subValues.clear();
-
-    // Lectura de 8 registros (500..507)
-    const uint16_t startReg = 500;
-    const uint16_t numRegs = 8;
-    uint16_t rawData[8];
-    memset(rawData, 0, sizeof(rawData));
-
-    // Definir las claves para cada valor usando las constantes
-    const char* keys[] = {
-        ENV4_KEY_HUMIDITY,
-        ENV4_KEY_TEMPERATURE,
-        ENV4_KEY_PRESSURE,
-        ENV4_KEY_ILLUMINATION
-    };
-    
-    bool ok = readHoldingRegisters(cfg.address, startReg, numRegs, rawData);
-    if (!ok) {
-        // Llenar con NAN si fallo, pero usando las claves correctas
-        for (int i=0; i<4; i++){
-            SubValue sv;
-            strncpy(sv.key, keys[i], sizeof(sv.key));
-            sv.value = NAN;
-            reading.subValues.push_back(sv);
-        }
-        return reading;
-    }
-
-    // Extraer segun datasheet (versión 4 en 1):
-    // rawData[0] = Humedad entera *10
-    // rawData[1] = Temp entera *10 (16 bits con posible signo)
-    // rawData[5] = Presion *10 (en kPa)
-    // rawData[6] = LuxHigh (32 bits -> parte alta)
-    // rawData[7] = LuxLow  (32 bits -> parte baja)
-    // Los demás registros (ruido, PM2.5, PM10) vienen en 0 y se ignoran
-
-    // Humedad
-    {
-        SubValue sH;
-        strncpy(sH.key, keys[0], sizeof(sH.key)); 
-        sH.value = rawData[0] / 10.0f;
-        reading.subValues.push_back(sH);
-    }
-    // Temperatura
-    {
-        SubValue sT;
-        strncpy(sT.key, keys[1], sizeof(sT.key));
-        // Ver si es negativo
-        int16_t temp16 = (int16_t)rawData[1];
-        sT.value = temp16 / 10.0f;
-        reading.subValues.push_back(sT);
-    }
-    // Presion
-    {
-        SubValue sP;
-        strncpy(sP.key, keys[2], sizeof(sP.key));
-        sP.value = rawData[5] / 10.0f;  // kPa
-        reading.subValues.push_back(sP);
-    }
-    // Lux
-    {
-        uint32_t luxHigh = rawData[6];
-        uint32_t luxLow  = rawData[7];
-        uint32_t fullLux = (luxHigh << 16) | luxLow; 
-        SubValue sL;
-        strncpy(sL.key, keys[3], sizeof(sL.key));
-        sL.value = (float)fullLux;
-        reading.subValues.push_back(sL);
-    }
-
-    return reading;
-}
-
-#endif // defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
-
-================
 File: src/utilities.cpp
 ================
 #include <Arduino.h>  // Agregar esta línea para definir la clase String
@@ -5493,6 +5749,106 @@ void formatFloatTo3Decimals(float value, char* buffer, size_t bufferSize) {
         // Si no, terminamos la cadena después del último dígito no cero
         buffer[i + 1] = '\0';
     }
+}
+
+================
+File: platformio.ini
+================
+; PlatformIO Project Configuration File
+;
+;   Build options: build flags, source filter
+;   Upload options: custom upload port, speed and extra flags
+;   Library options: dependencies, extra library storages
+;   Advanced options: extra scripting
+;
+; Please visit documentation for the other options and examples
+; https://docs.platformio.org/page/projectconf.html
+
+[env:esp32-c3-devkitc-02]
+platform = espressif32
+board = esp32-c3-devkitc-02
+framework = arduino
+lib_deps = 
+	adafruit/RTClib@^2.1.1
+	paulstoffregen/OneWire@^2.3.7
+	milesburton/DallasTemperature@^3.11.0
+	SPI
+	Wire
+	BLE
+	jgromes/RadioLib@^6.6.0
+	bblanchon/ArduinoJson@^6.21.4
+	sensirion/Sensirion I2C SHT3x@^1.0.1
+upload_speed = 921600
+monitor_speed = 115200
+
+================
+File: src/HardwareManager.cpp
+================
+/*******************************************************************************************
+ * Archivo: src/HardwareManager.cpp
+ * Descripción: Implementación de la gestión de hardware del sistema.
+ *******************************************************************************************/
+
+#include "HardwareManager.h"
+#include "debug.h"
+// time execution < 10 ms
+bool HardwareManager::initHardware(PCA9555& ioExpander, PowerManager& powerManager, SHT31& sht30Sensor, SPIClass& spi, const std::vector<SensorConfig>& enabledNormalSensors) {
+    #ifdef DEVICE_TYPE_ANALOGIC || DEVICE_TYPE_BASIC
+    // Configurar GPIO one wire con pull-up
+    pinMode(ONE_WIRE_BUS, INPUT_PULLUP);
+    #endif
+    
+    // Inicializar I2C con pines definidos
+    Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN);
+    
+    // Inicializar SPI con pines definidos
+    spi.begin(SPI_SCK_PIN, SPI_MISO_PIN, SPI_MOSI_PIN);
+
+    // Verificar si hay algún sensor SHT30
+    bool sht30SensorEnabled = false;
+    for (const auto& sensor : enabledNormalSensors) {
+        if (sensor.type == SHT30 && sensor.enable) {
+            sht30SensorEnabled = true;
+            break;
+        }
+    }
+
+    // Inicializar SHT30 solo si está habilitado en la configuración
+    if (sht30SensorEnabled) {
+        //Inicializar SHT30 para reset y dummy lectura
+        sht30Sensor.begin();
+        sht30Sensor.reset();
+    }
+    
+    //Inicializar PCA9555 para expansión de I/O
+    if (!ioExpander.begin()) {
+        DEBUG_PRINTLN("Error al inicializar PCA9555");
+        return false;
+    }
+    
+    // Inicializar los pines de selección SPI (SS)
+    initializeSPISSPins();
+    
+    // Inicializar PowerManager para control de energía
+    powerManager.begin();
+    
+    return true;
+}
+
+void HardwareManager::initializeSPISSPins() {
+    // Inicializar SS del LORA conectado directamente
+    pinMode(LORA_NSS_PIN, OUTPUT);
+    digitalWrite(LORA_NSS_PIN, HIGH);
+
+    // Inicializar SS conectados al expansor
+    extern PCA9555 ioExpander;
+    ioExpander.pinMode(PT100_CS_PIN, OUTPUT); // ss de p100
+    ioExpander.digitalWrite(PT100_CS_PIN, HIGH);
+
+#ifdef DEVICE_TYPE_ANALOGIC
+    ioExpander.pinMode(ADS124S08_CS_PIN, OUTPUT); // ss del adc
+    ioExpander.digitalWrite(ADS124S08_CS_PIN, HIGH);
+#endif
 }
 
 ================
@@ -5638,34 +5994,149 @@ private:
 #endif // LORA_MANAGER_H
 
 ================
-File: platformio.ini
+File: src/ModbusSensorManager.cpp
 ================
-; PlatformIO Project Configuration File
-;
-;   Build options: build flags, source filter
-;   Upload options: custom upload port, speed and extra flags
-;   Library options: dependencies, extra library storages
-;   Advanced options: extra scripting
-;
-; Please visit documentation for the other options and examples
-; https://docs.platformio.org/page/projectconf.html
+#include "ModbusSensorManager.h"
+#include "config.h"    // Para SERIAL_BAUD
 
-[env:esp32-c3-devkitc-02]
-platform = espressif32
-board = esp32-c3-devkitc-02
-framework = arduino
-lib_deps = 
-	adafruit/RTClib@^2.1.1
-	paulstoffregen/OneWire@^2.3.7
-	milesburton/DallasTemperature@^3.11.0
-	SPI
-	Wire
-	BLE
-	jgromes/RadioLib@^6.6.0
-	bblanchon/ArduinoJson@^6.21.4
-	sensirion/Sensirion I2C SHT3x@^1.0.1
-upload_speed = 921600
-monitor_speed = 115200
+#if defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
+
+#include "ModbusMaster.h"
+#include "debug.h"     // Para DEBUG_END
+#include "sensor_types.h" // Para todos los tipos y constantes de sensores
+#include "utilities.h"
+#include <string.h>
+
+// Crear una instancia global de ModbusMaster
+ModbusMaster modbus;
+
+/**
+ * @note 
+ *  - Se usa la biblioteca ModbusMaster para la comunicación Modbus
+ *  - Se asume que el pin DE/RE del transceiver RS485 está atado de forma que cuando
+ *    se escribe en Serial, se habilita la transmisión, y al terminar, pasa a recepción.
+ */
+
+void ModbusSensorManager::beginModbus() {
+    // Configurar Serial usando los parámetros definidos en config.h
+    Serial.begin(MODBUS_BAUDRATE, MODBUS_SERIAL_CONFIG);
+    
+    // Inicializar ModbusMaster
+    modbus.begin(0, Serial); // El slave ID se configurará en cada petición
+}
+
+void ModbusSensorManager::endModbus() {
+    // Finalizar la comunicación Serial de Modbus
+    Serial.end();
+}
+
+bool ModbusSensorManager::readHoldingRegisters(uint8_t address, uint16_t startReg, uint16_t numRegs, uint16_t* outData) {
+    // Guardar los bytes recibidos para depuración posterior
+    uint8_t result;
+    
+    // Establecer el slave ID
+    modbus.begin(address, Serial);
+    
+    // Implementar reintentos de lectura
+    for (uint8_t retry = 0; retry < MODBUS_MAX_RETRY; retry++) {
+        // Registrar el tiempo de inicio para implementar timeout manual
+        uint32_t startTime = millis();
+        
+        // Realizar la petición Modbus para leer registros holding
+        result = modbus.readHoldingRegisters(startReg, numRegs);
+        
+        // Verificar si la lectura fue exitosa
+        if (result == modbus.ku8MBSuccess) {
+            // Extraer datos de los registros
+            for (uint8_t i = 0; i < numRegs; i++) {
+                outData[i] = modbus.getResponseBuffer(i);
+            }
+            
+            return true;
+        }
+        
+        // Verificar si se agotó el tiempo (timeout personalizado)
+        if ((millis() - startTime) >= MODBUS_RESPONSE_TIMEOUT) {
+            DEBUG_PRINTLN("Timeout en comunicación Modbus");
+            break; // Salir del bucle de reintentos si se agota el tiempo
+        }
+        
+        // Si no es el último intento, continuar con el siguiente intento
+        DEBUG_PRINTF("Intento %d fallido, código: %d\n", retry + 1, result);
+    }
+    
+    // Si llegamos aquí, todos los intentos fallaron
+    DEBUG_PRINTF("Error Modbus después de %d intentos\n", MODBUS_MAX_RETRY);
+    return false;
+}
+
+ModbusSensorReading ModbusSensorManager::readEnvSensor(const ModbusSensorConfig &cfg) {
+    ModbusSensorReading reading;
+    strncpy(reading.sensorId, cfg.sensorId, sizeof(reading.sensorId));
+    reading.type = cfg.type;
+    reading.subValues.clear();
+
+    // Lectura de 8 registros (500..507)
+    const uint16_t startReg = 500;
+    const uint16_t numRegs = 8;
+    uint16_t rawData[8];
+    memset(rawData, 0, sizeof(rawData));
+    
+    bool ok = readHoldingRegisters(cfg.address, startReg, numRegs, rawData);
+    if (!ok) {
+        // Llenar con NAN si falló
+        // Respetamos el orden: [0]=Humedad, [1]=Temperatura, [2]=Presión, [3]=Iluminación
+        for (int i=0; i<4; i++){
+            SubValue sv;
+            sv.value = NAN;
+            reading.subValues.push_back(sv);
+        }
+        return reading;
+    }
+
+    // Extraer según datasheet (versión 4 en 1):
+    // rawData[0] = Humedad entera *10
+    // rawData[1] = Temp entera *10 (16 bits con posible signo)
+    // rawData[5] = Presión *10 (en kPa)
+    // rawData[6] = LuxHigh (32 bits -> parte alta)
+    // rawData[7] = LuxLow  (32 bits -> parte baja)
+    // Los demás registros (ruido, PM2.5, PM10) vienen en 0 y se ignoran
+
+    // Agregar Humedad como primer valor [0]
+    {
+        SubValue sH;
+        sH.value = rawData[0] / 10.0f;
+        reading.subValues.push_back(sH);
+    }
+    
+    // Agregar Temperatura como segundo valor [1]
+    {
+        SubValue sT;
+        // Ver si es negativo
+        int16_t temp16 = (int16_t)rawData[1];
+        sT.value = temp16 / 10.0f;
+        reading.subValues.push_back(sT);
+    }
+    
+    // Agregar Presión Atmosférica como tercer valor [2]
+    {
+        SubValue sP;
+        sP.value = rawData[5] / 10.0f;
+        reading.subValues.push_back(sP);
+    }
+    
+    // Agregar Iluminación como cuarto valor [3]
+    {
+        SubValue sL;
+        uint32_t lux = ((uint32_t)rawData[6] << 16) | rawData[7];
+        sL.value = (float)lux;
+        reading.subValues.push_back(sL);
+    }
+    
+    return reading;
+}
+
+#endif // defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
 
 ================
 File: src/clsPCA9555.cpp
@@ -6526,16 +6997,22 @@ File: include/sensor_types.h
 
 #include <stdint.h>
 #include <vector>
-#include "sensor_constants.h"
 #include "config.h"
+#include <map>
+
+/************************************************************************
+ * TIEMPOS DE ESTABILIZACIÓN PARA SENSORES MODBUS (en ms)
+ ************************************************************************/
+ 
+#define MODBUS_ENV4_STABILIZATION_TIME 5000   // Tiempo de estabilización para sensor ENV4 Modbus
+// Añadir aquí otros tiempos de estabilización para sensores Modbus
 
 /**
  * @brief Estructura para variables múltiples en un solo sensor.
- *        Por ejemplo, un sensor SHT30 que da Temperature (T) y Humidity (H).
+ *        Por ejemplo, un sensor SHT30 que da Temperature y Humidity.
  */
 struct SubValue {
-    char key[10];    // Nombre corto de la variable, por ej: "T", "H", etc.
-    float value;
+    float value;     // El orden de los valores en el vector es importante
 };
 
 /************************************************************************
@@ -6549,16 +7026,26 @@ enum SensorType {
     // Sensores estándar (no-Modbus)
     N100K,    // NTC 100K
     N10K,     // NTC 10K
-    HDS10,    // HDS10
+    HDS10,    // Condensation Humidity
     RTD,      // RTD
     DS18B20,  // DS18B20
     PH,       // pH
     COND,     // Conductividad
+    CONDH,    // Humedad de Condensación
     SOILH,    // Soil Humidity
-    SHT30,    // SHT30
+    TEMP_A,   // Temperatura ambiente
+    HUM_A,    // Humedad ambiente
+    PRESS_A,  // Presión atmosférica
+    CO2,      // Dióxido de Carbono
+    LIGHT,    // Luz Ambiental
+    ROOTH,    // Humedad de Raíz
+    LEAFH,    // Humedad de Hoja
+    
+    // Sensores múltiples (valor 100 en el mapa)
+    SHT30 = 100,  // Sensor SHT30: [0]=Temperatura(°C), [1]=Humedad(%)
     
     // Sensores Modbus
-    ENV4      // Sensor ambiental 4 en 1 (Modbus)
+    ENV4 = 101,   // Sensor ambiental 4 en 1: [0]=Humedad(%), [1]=Temperatura(°C), [2]=Presión(kPa), [3]=Iluminación(lux)
     // Aquí se pueden agregar más tipos de sensores Modbus
 };
 
@@ -6723,7 +7210,6 @@ int16_t LoRaManager::lwActivate(LoRaWANNode& node) {
             // Intentar solicitar y actualizar el tiempo del RTC hasta 3 veces
             while (!rtcUpdated && rtcAttempts < maxAttempts) {
                 rtcAttempts++;
-                DEBUG_PRINTF("Intento %d de actualización de RTC\n", rtcAttempts);
                 
                 bool macCommandSuccess = node.sendMacCommandReq(RADIOLIB_LORAWAN_MAC_DEVICE_TIME);
                 if (macCommandSuccess) {
@@ -7144,7 +7630,7 @@ File: include/SensorManager.h
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #endif
-#include <SensirionI2cSht3x.h>
+#include "SHT31.h"
 #if defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
 #include "ModbusSensorManager.h"
 #ifdef DEVICE_TYPE_ANALOGIC
@@ -7166,7 +7652,7 @@ extern MAX31865_RTD rtd;
 extern OneWire oneWire;
 extern DallasTemperature dallasTemp;
 #endif
-extern SensirionI2cSht3x sht30Sensor;
+extern SHT31 sht30Sensor;
 
 /**
  * @brief Clase que maneja la inicialización y lecturas de todos los sensores
@@ -7175,7 +7661,7 @@ extern SensirionI2cSht3x sht30Sensor;
 class SensorManager {
   public:
     // Inicializa pines, periféricos (ADC, RTD, etc.), OneWire, etc.
-    static void beginSensors();
+    static void beginSensors(const std::vector<SensorConfig>& enabledNormalSensors);
 
     // Devuelve la lectura (o lecturas) de un sensor NO-Modbus según su configuración.
     static SensorReading getSensorReading(const SensorConfig& cfg);
@@ -7190,7 +7676,11 @@ class SensorManager {
 #if defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
                                     , std::vector<ModbusSensorReading>& modbusReadings
 #endif
-                                    );
+                                    , const std::vector<SensorConfig>& enabledNormalSensors
+#if defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
+                                    , const std::vector<ModbusSensorConfig>& enabledModbusSensors
+#endif
+                                   );
 
 #ifdef DEVICE_TYPE_ANALOGIC
     
@@ -7251,7 +7741,7 @@ File: src/main.cpp
 #include "ADS124S08.h"
 #include "HardwareManager.h"
 #include "SleepManager.h"
-
+#include "SHT31.h"
 //--------------------------------------------------------------------------------------------
 // Variables globales
 //--------------------------------------------------------------------------------------------
@@ -7264,6 +7754,12 @@ String deviceId;
 String stationId;
 bool systemInitialized;
 unsigned long setupStartTime; // Variable para almacenar el tiempo de inicio
+
+// Configuraciones de sensores
+std::vector<SensorConfig> enabledNormalSensors;
+#if defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
+std::vector<ModbusSensorConfig> enabledModbusSensors;
+#endif
 
 RTC_DS3231 rtc;
 PCA9555 ioExpander(I2C_ADDRESS_PCA9555, I2C_SDA_PIN, I2C_SCL_PIN);
@@ -7278,7 +7774,7 @@ SPISettings spiRtdSettings(SPI_RTD_CLOCK, MSBFIRST, SPI_MODE1);
 SPISettings spiRadioSettings(SPI_RADIO_CLOCK, MSBFIRST, SPI_MODE0);
 
 MAX31865_RTD rtd(MAX31865_RTD::RTD_PT100, spi, spiRtdSettings, ioExpander, PT100_CS_PIN);
-SensirionI2cSht3x sht30Sensor;
+SHT31 sht30Sensor(0x44, &Wire);
 
 SX1262 radio = new Module(LORA_NSS_PIN, LORA_DIO1_PIN, LORA_RST_PIN, LORA_BUSY_PIN, spi, spiRadioSettings);
 LoRaWANNode node(&radio, &Region, subBand);
@@ -7313,8 +7809,14 @@ void setup() {
     }
     ConfigManager::getSystemConfig(systemInitialized, timeToSleep, deviceId, stationId);
 
+    // Obtener configuraciones de sensores habilitados
+    enabledNormalSensors = ConfigManager::getEnabledSensorConfigs();
+#if defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
+    enabledModbusSensors = ConfigManager::getEnabledModbusSensorConfigs();
+#endif
+
     // Inicialización de hardware
-    if (!HardwareManager::initHardware(ioExpander, powerManager, sht30Sensor, spi)) {
+    if (!HardwareManager::initHardware(ioExpander, powerManager, sht30Sensor, spi, enabledNormalSensors)) {
         DEBUG_PRINTLN("Error en la inicialización del hardware");
         SleepManager::goToDeepSleep(timeToSleep, powerManager, ioExpander, &radio, node, LWsession, spi);
     }
@@ -7334,7 +7836,7 @@ void setup() {
     }
 
     // Inicializar sensores
-    SensorManager::beginSensors();
+    SensorManager::beginSensors(enabledNormalSensors);
 
     //TIEMPO TRASCURRIDO HASTA EL MOMENTO ≈ 98 ms
     // Inicializar radio LoRa
@@ -7366,17 +7868,15 @@ void loop() {
     std::vector<SensorReading> normalReadings;
 #if defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
     std::vector<ModbusSensorReading> modbusReadings;
-    SensorManager::getAllSensorReadings(normalReadings, modbusReadings);
-    
-    // Debug del tiempo transcurrido antes de enviar datos
-    DEBUG_PRINTF("Tiempo transcurrido antes de enviar datos: %lu ms\n", millis() - setupStartTime);
-    
+    SensorManager::getAllSensorReadings(normalReadings, modbusReadings, enabledNormalSensors, enabledModbusSensors);
+#else
+    SensorManager::getAllSensorReadings(normalReadings, enabledNormalSensors);
+#endif
+
     // Usar el nuevo formato delimitado en lugar de JSON
+#if defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
     LoRaManager::sendDelimitedPayload(normalReadings, modbusReadings, node, deviceId, stationId, rtc);
 #else
-    SensorManager::getAllSensorReadings(normalReadings);
-    
-    // Usar el nuevo formato delimitado en lugar de JSON
     LoRaManager::sendDelimitedPayload(normalReadings, node, deviceId, stationId, rtc);
 #endif
 
@@ -7384,7 +7884,7 @@ void loop() {
     unsigned long elapsedTime = millis() - setupStartTime;
     DEBUG_PRINTF("Tiempo transcurrido antes de sleep: %lu ms\n", elapsedTime);
     delay(100);
-    
+
     // Dormir
     SleepManager::goToDeepSleep(timeToSleep, powerManager, ioExpander, &radio, node, LWsession, spi);
 }
@@ -7396,9 +7896,9 @@ File: include/config.h
 #define CONFIG_H
 
 // Descomentar solo UNO de los siguientes
-// #define DEVICE_TYPE_BASIC
+//#define DEVICE_TYPE_BASIC
 #define DEVICE_TYPE_ANALOGIC
-// #define DEVICE_TYPE_MODBUS
+//#define DEVICE_TYPE_MODBUS
 
 // Configuración de depuración - Comentar para deshabilitar mensajes de depuración
 #define DEBUG_ENABLED
@@ -7426,6 +7926,8 @@ File: include/config.h
 #define CONFIG_TRIGGER_TIME 5000
 #define CONFIG_TIMEOUT      30000
 #define CONFIG_LED_PIN      P11
+#define CONFIG_BLE_WAIT_TIMEOUT     60000   // Tiempo máximo de espera para conexión BLE (60 segundos)
+#define CONFIG_BLE_MAX_CONN_TIME    300000  // Tiempo máximo de conexión BLE activa (5 minutos)
 
 // LoRa
 #define LORA_NSS_PIN        8
@@ -7458,7 +7960,7 @@ File: include/config.h
 #define BLE_CHAR_SYSTEM_UUID         "2A37"
 #define BLE_CHAR_SENSORS_UUID        "2A40"
 #define BLE_CHAR_LORA_CONFIG_UUID    "2A41"
-#define BLE_DEVICE_PREFIX            "AGRICOS_"
+#define BLE_DEVICE_PREFIX            "AGRICOS-"
 
 // Calibración batería
 const double R1 = 470000.0;
@@ -7533,6 +8035,8 @@ const double conversionFactor = (R1 + R2) / R1;
 #define CONFIG_TRIGGER_TIME 5000
 #define CONFIG_TIMEOUT      30000
 #define CONFIG_LED_PIN      P11
+#define CONFIG_BLE_WAIT_TIMEOUT     60000   // Tiempo máximo de espera para conexión BLE (60 segundos)
+#define CONFIG_BLE_MAX_CONN_TIME    300000  // Tiempo máximo de conexión BLE activa (5 minutos)
 
 // LoRa
 #define LORA_NSS_PIN        8
@@ -7569,7 +8073,7 @@ const double conversionFactor = (R1 + R2) / R1;
 #define BLE_CHAR_NTC10K_UUID         "2A39"
 #define BLE_CHAR_CONDUCTIVITY_UUID   "2A3C"
 #define BLE_CHAR_PH_UUID             "2A3B"
-#define BLE_DEVICE_PREFIX            "AGRICOS_"
+#define BLE_DEVICE_PREFIX            "AGRICOS-"
 
 // Calibración batería
 const double R1 = 1000000.0;
@@ -7720,12 +8224,15 @@ const double conversionFactor = (R1 + R2) / R1;
     {"5", "SM1",   SOILH, true}, \
     {"8", "PH",    PH, true}, \
     {"R", "RTD1",  RTD, true}, \
-    {"D", "DS1",   DS18B20, true}, \
+    {"D", "DS1",   DS18B20, false}, \
     {"I2C", "SHT30", SHT30, true} \
 }
 
 // Sin sensores Modbus registrados
-#define DEFAULT_MODBUS_SENSOR_CONFIGS { }
+#define DEFAULT_MODBUS_SENSOR_CONFIGS { \
+    {"ModbusEnv1", ENV4, 1, false} \
+}
+
 
 // Límites de temperatura NTC para evitar lecturas erróneas cuando esta desconectado
 #define NTC_TEMP_MIN           -20.0   // Temperatura mínima válida en °C
@@ -7762,6 +8269,8 @@ const double conversionFactor = (R1 + R2) / R1;
 #define CONFIG_TRIGGER_TIME 5000
 #define CONFIG_TIMEOUT      30000
 #define CONFIG_LED_PIN      P11
+#define CONFIG_BLE_WAIT_TIMEOUT     60000   // Tiempo máximo de espera para conexión BLE (60 segundos)
+#define CONFIG_BLE_MAX_CONN_TIME    300000  // Tiempo máximo de conexión BLE activa (5 minutos)
 
 // LoRa
 #define LORA_NSS_PIN        8
@@ -7794,7 +8303,7 @@ const double conversionFactor = (R1 + R2) / R1;
 #define BLE_CHAR_SYSTEM_UUID         "2A37"
 #define BLE_CHAR_SENSORS_UUID        "2A40"
 #define BLE_CHAR_LORA_CONFIG_UUID    "2A41"
-#define BLE_DEVICE_PREFIX            "AGRICOS_"
+#define BLE_DEVICE_PREFIX            "AGRICOS-"
 
 // Calibración batería
 const double R1 = 470000.0;
@@ -7849,9 +8358,9 @@ const double conversionFactor = (R1 + R2) / R1;
 
 // Configuración default sensores
 #define DEFAULT_SENSOR_CONFIGS { \
-    {"R", "RTD1", RTD, 0, "", true}, \
-    {"D", "DS1", DS18B20, 0, "", true}, \
-    {"I2C", "SHT30", SHT30, 0, "", true} \
+    {"R", "RTD1",  RTD, true}, \
+    {"D", "DS1",   DS18B20, false}, \
+    {"I2C", "SHT30", SHT30, false} \
 }
 
 // Sin sensores Modbus registrados
@@ -7877,7 +8386,6 @@ File: src/SensorManager.cpp
 #include <Preferences.h>
 #include "config_manager.h"
 #include "debug.h"
-#include "sensor_constants.h"  // Para tiempos de estabilización
 #include "utilities.h"
 
 #ifdef DEVICE_TYPE_ANALOGIC
@@ -7901,7 +8409,7 @@ extern ADS124S08 ADC;
 // Métodos de la clase SensorManager
 // -------------------------------------------------------------------------------------
 
-void SensorManager::beginSensors() {
+void SensorManager::beginSensors(const std::vector<SensorConfig>& enabledNormalSensors) {
     // Encender alimentación 3.3V
     powerManager.power3V3On();
     
@@ -7926,10 +8434,22 @@ void SensorManager::beginSensors() {
     }
 
 #if defined(DEVICE_TYPE_BASIC) || defined(DEVICE_TYPE_ANALOGIC)
-    // TIEMPO ejecución ≈ 65 ms
-    // Inicializar DS18B20
-    dallasTemp.begin();
-    dallasTemp.requestTemperatures();
+    // Verificar si hay algún sensor DS18B20
+    bool ds18b20SensorEnabled = false;
+    for (const auto& sensor : enabledNormalSensors) {
+        if (sensor.type == DS18B20 && sensor.enable) {
+            ds18b20SensorEnabled = true;
+            break;
+        }
+    }
+
+    // Inicializar DS18B20 solo si está habilitado en la configuración
+    if (ds18b20SensorEnabled) {
+        // TIEMPO ejecución ≈ 65 ms
+        // Inicializar DS18B20
+        dallasTemp.begin();
+        dallasTemp.requestTemperatures();
+    }
     ////////////////////////////////////////////////////////////////
 #endif
 
@@ -7941,19 +8461,16 @@ void SensorManager::beginSensors() {
     delay(1);
     // Asegurarse de que el ADC esté despierto
     ADC.sendCommand(WAKE_OPCODE_MASK);
-    
+
     // Configurar ADC con referencia interna
     ADC.regWrite(REF_ADDR_MASK, ADS_REFINT_ON_ALWAYS | ADS_REFSEL_INT);
     
     // Deshabilitar PGA (bypass)
     ADC.regWrite(PGA_ADDR_MASK, ADS_PGA_BYPASS); // PGA_EN = 0, ganancia ignorada
     
-    // Ajustar velocidad de muestreo
-    ADC.regWrite(DATARATE_ADDR_MASK, ADS_DR_4000); //EL PCA NO MANEJA DR MAS BAJOS
-    
-    // Iniciar conversión continua
-    ADC.reStart();
-    ////////////////////////////////////////////////////////////////
+    // Ajustar velocidad de muestreo y modo single shot
+    ADC.regWrite(DATARATE_ADDR_MASK, ADS_DR_4000 | ADS_CONVMODE_SS); // Modo single shot
+        ////////////////////////////////////////////////////////////////
 #endif
 }
 
@@ -8038,14 +8555,22 @@ float SensorManager::readSensorValue(const SensorConfig &cfg, SensorReading &rea
             float tmp = 0.0f, hum = 0.0f;
             SHT30Sensor::read(tmp, hum);
             reading.subValues.clear();
+            DEBUG_PRINTF("Temperatura: %f, Humedad: %f\n", tmp, hum);
+            
+            // Agregar temperatura como primer valor [0]
             {
-                SubValue sT; strncpy(sT.key, "T", sizeof(sT.key)); sT.value = tmp;
+                SubValue sT; 
+                sT.value = tmp;
                 reading.subValues.push_back(sT);
             }
+            
+            // Agregar humedad como segundo valor [1]
             {
-                SubValue sH; strncpy(sH.key, "H", sizeof(sH.key)); sH.value = hum;
+                SubValue sH; 
+                sH.value = hum;
                 reading.subValues.push_back(sH);
             }
+            
             // Asignar el valor principal como NAN si alguno de los valores falló
             reading.value = (isnan(tmp) || isnan(hum)) ? NAN : tmp;
         }
@@ -8081,17 +8606,15 @@ ModbusSensorReading SensorManager::getModbusSensorReading(const ModbusSensorConf
 }
 #endif
 
-void SensorManager::getAllSensorReadings(std::vector<SensorReading>& normalReadings
+void SensorManager::getAllSensorReadings(std::vector<SensorReading>& normalReadings,
 #if defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
-                                        , std::vector<ModbusSensorReading>& modbusReadings
+                                        std::vector<ModbusSensorReading>& modbusReadings,
+#endif
+                                        const std::vector<SensorConfig>& enabledNormalSensors
+#if defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
+                                        , const std::vector<ModbusSensorConfig>& enabledModbusSensors
 #endif
                                         ) {
-    // Obtener configuraciones de sensores habilitados
-    auto enabledNormalSensors = ConfigManager::getEnabledSensorConfigs();
-#if defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
-    auto enabledModbusSensors = ConfigManager::getEnabledModbusSensorConfigs();
-#endif
-    
     // Reservar espacio para los vectores
     normalReadings.reserve(enabledNormalSensors.size());
 #if defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
@@ -8100,16 +8623,7 @@ void SensorManager::getAllSensorReadings(std::vector<SensorReading>& normalReadi
     
     // Leer sensores normales
     for (const auto &sensor : enabledNormalSensors) {
-        uint32_t startTime = millis();
-        SensorReading sensorReading = getSensorReading(sensor);
-        uint32_t elapsedTime = millis() - startTime;
-        
-        DEBUG_PRINTF("Sensor %s (tipo %d) medido en %u ms\n", 
-                    sensorReading.sensorId, 
-                    (int)sensorReading.type, 
-                    elapsedTime);
-                    
-        normalReadings.push_back(sensorReading);
+        normalReadings.push_back(getSensorReading(sensor));
     }
     
 #if defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
@@ -8125,7 +8639,7 @@ void SensorManager::getAllSensorReadings(std::vector<SensorReading>& normalReadi
             // Obtener el tiempo de estabilización según el tipo de sensor
             switch (sensor.type) {
                 case ENV4:
-                    sensorStabilizationTime = SENSOR_MODBUS_ENV4_STABILIZATION_TIME;
+                    sensorStabilizationTime = MODBUS_ENV4_STABILIZATION_TIME;
                     break;
                 // Añadir casos para otros tipos de sensores Modbus con sus respectivos tiempos
                 default:
