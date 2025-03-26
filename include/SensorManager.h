@@ -12,7 +12,7 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #endif
-#include <SensirionI2cSht3x.h>
+#include "SHT31.h"
 #if defined(DEVICE_TYPE_ANALOGIC) || defined(DEVICE_TYPE_MODBUS)
 #include "ModbusSensorManager.h"
 #ifdef DEVICE_TYPE_ANALOGIC
@@ -34,7 +34,7 @@ extern MAX31865_RTD rtd;
 extern OneWire oneWire;
 extern DallasTemperature dallasTemp;
 #endif
-extern SensirionI2cSht3x sht30Sensor;
+extern SHT31 sht30Sensor;
 
 /**
  * @brief Clase que maneja la inicialización y lecturas de todos los sensores

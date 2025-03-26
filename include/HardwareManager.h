@@ -13,7 +13,7 @@
 #include "config.h"
 #include "PowerManager.h"
 #include "clsPCA9555.h"
-#include <SensirionI2cSht3x.h>
+#include "SHT31.h"
 #include "sensor_types.h"
 #include <vector>
 
@@ -29,7 +29,7 @@ public:
      * @return true si la inicialización fue exitosa, false en caso contrario
      */
     static bool initHardware(PCA9555& ioExpander, PowerManager& powerManager, 
-                           SensirionI2cSht3x& sht30Sensor, SPIClass& spi,
+                           SHT31& sht30Sensor, SPIClass& spi,
                            const std::vector<SensorConfig>& enabledNormalSensors);
 
     /**

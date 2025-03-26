@@ -7,15 +7,23 @@
  * @param outHum Variable donde se almacenará la humedad relativa en %
  */
 void SHT30Sensor::read(float &outTemp, float &outHum) {
-    float temperature = 0.0f;
-    float humidity = 0.0f;
-
-    int16_t error = sht30Sensor.measureSingleShot(REPEATABILITY_LOW, false, temperature, humidity);
-    if (error != NO_ERROR) {
-        outTemp = NAN;
-        outHum = NAN;
-        return;
+    // Intentar hasta 10 veces obtener una lectura válida
+    for (int i = 0; i < 15; i++) {
+        if (sht30Sensor.read()) {
+            float temp = sht30Sensor.getTemperature();
+            float hum = sht30Sensor.getHumidity();
+            
+            // Verificar que los valores sean válidos (no cero y dentro de rangos razonables)
+            if (temp != 0.0f && hum != 0.0f && temp > -40.0f && temp < 125.0f && hum > 0.0f && hum <= 100.0f) {
+                outTemp = temp;
+                outHum = hum;
+                return; // Retornar inmediatamente con la primera lectura válida
+            }
+        }
+        delay(1); // Pausa entre mediciones
     }
-    outTemp = temperature;
-    outHum = humidity;
+
+    // Si no se encontró ninguna lectura válida
+    outTemp = NAN;
+    outHum = NAN;
 } 

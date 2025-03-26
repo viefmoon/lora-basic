@@ -11,7 +11,6 @@
 #include <Preferences.h>
 #include "config_manager.h"
 #include "debug.h"
-#include "modbus_sensor_constants.h"  // Para tiempos de estabilización de sensores Modbus
 #include "utilities.h"
 
 #ifdef DEVICE_TYPE_ANALOGIC
@@ -87,7 +86,6 @@ void SensorManager::beginSensors(const std::vector<SensorConfig>& enabledNormalS
     delay(1);
     // Asegurarse de que el ADC esté despierto
     ADC.sendCommand(WAKE_OPCODE_MASK);
-    delay(1);
 
     // Configurar ADC con referencia interna
     ADC.regWrite(REF_ADDR_MASK, ADS_REFINT_ON_ALWAYS | ADS_REFSEL_INT);
@@ -95,13 +93,9 @@ void SensorManager::beginSensors(const std::vector<SensorConfig>& enabledNormalS
     // Deshabilitar PGA (bypass)
     ADC.regWrite(PGA_ADDR_MASK, ADS_PGA_BYPASS); // PGA_EN = 0, ganancia ignorada
     
-    // Ajustar velocidad de muestreo
-    ADC.regWrite(DATARATE_ADDR_MASK, ADS_DR_4000); //EL PCA NO MANEJA DR MAS BAJOS
-    
-    // Iniciar conversión continua
-    ADC.reStart();
-    delay(10);
-    ////////////////////////////////////////////////////////////////
+    // Ajustar velocidad de muestreo y modo single shot
+    ADC.regWrite(DATARATE_ADDR_MASK, ADS_DR_4000 | ADS_CONVMODE_SS); // Modo single shot
+        ////////////////////////////////////////////////////////////////
 #endif
 }
 
@@ -186,14 +180,22 @@ float SensorManager::readSensorValue(const SensorConfig &cfg, SensorReading &rea
             float tmp = 0.0f, hum = 0.0f;
             SHT30Sensor::read(tmp, hum);
             reading.subValues.clear();
+            DEBUG_PRINTF("Temperatura: %f, Humedad: %f\n", tmp, hum);
+            
+            // Agregar temperatura como primer valor [0]
             {
-                SubValue sT; strncpy(sT.key, "T", sizeof(sT.key)); sT.value = tmp;
+                SubValue sT; 
+                sT.value = tmp;
                 reading.subValues.push_back(sT);
             }
+            
+            // Agregar humedad como segundo valor [1]
             {
-                SubValue sH; strncpy(sH.key, "H", sizeof(sH.key)); sH.value = hum;
+                SubValue sH; 
+                sH.value = hum;
                 reading.subValues.push_back(sH);
             }
+            
             // Asignar el valor principal como NAN si alguno de los valores falló
             reading.value = (isnan(tmp) || isnan(hum)) ? NAN : tmp;
         }

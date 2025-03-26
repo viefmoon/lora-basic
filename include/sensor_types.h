@@ -3,16 +3,22 @@
 
 #include <stdint.h>
 #include <vector>
-#include "modbus_sensor_constants.h"
 #include "config.h"
+#include <map>
+
+/************************************************************************
+ * TIEMPOS DE ESTABILIZACIÓN PARA SENSORES MODBUS (en ms)
+ ************************************************************************/
+ 
+#define MODBUS_ENV4_STABILIZATION_TIME 5000   // Tiempo de estabilización para sensor ENV4 Modbus
+// Añadir aquí otros tiempos de estabilización para sensores Modbus
 
 /**
  * @brief Estructura para variables múltiples en un solo sensor.
- *        Por ejemplo, un sensor SHT30 que da Temperature (T) y Humidity (H).
+ *        Por ejemplo, un sensor SHT30 que da Temperature y Humidity.
  */
 struct SubValue {
-    char key[10];    // Nombre corto de la variable, por ej: "T", "H", etc.
-    float value;
+    float value;     // El orden de los valores en el vector es importante
 };
 
 /************************************************************************
@@ -26,16 +32,26 @@ enum SensorType {
     // Sensores estándar (no-Modbus)
     N100K,    // NTC 100K
     N10K,     // NTC 10K
-    HDS10,    // HDS10
+    HDS10,    // Condensation Humidity
     RTD,      // RTD
     DS18B20,  // DS18B20
     PH,       // pH
     COND,     // Conductividad
+    CONDH,    // Humedad de Condensación
     SOILH,    // Soil Humidity
-    SHT30,    // SHT30
+    TEMP_A,   // Temperatura ambiente
+    HUM_A,    // Humedad ambiente
+    PRESS_A,  // Presión atmosférica
+    CO2,      // Dióxido de Carbono
+    LIGHT,    // Luz Ambiental
+    ROOTH,    // Humedad de Raíz
+    LEAFH,    // Humedad de Hoja
+    
+    // Sensores múltiples (valor 100 en el mapa)
+    SHT30 = 100,  // Sensor SHT30: [0]=Temperatura(°C), [1]=Humedad(%)
     
     // Sensores Modbus
-    ENV4      // Sensor ambiental 4 en 1 (Modbus)
+    ENV4 = 101,   // Sensor ambiental 4 en 1: [0]=Humedad(%), [1]=Temperatura(°C), [2]=Presión(kPa), [3]=Iluminación(lux)
     // Aquí se pueden agregar más tipos de sensores Modbus
 };
 

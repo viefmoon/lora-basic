@@ -5,8 +5,7 @@
 
 #include "ModbusMaster.h"
 #include "debug.h"     // Para DEBUG_END
-#include "sensor_types.h" // Para ENV4Keys
-#include "modbus_sensor_constants.h" // Para claves de sensores Modbus
+#include "sensor_types.h" // Para todos los tipos y constantes de sensores
 #include "utilities.h"
 #include <string.h>
 
@@ -84,69 +83,58 @@ ModbusSensorReading ModbusSensorManager::readEnvSensor(const ModbusSensorConfig 
     const uint16_t numRegs = 8;
     uint16_t rawData[8];
     memset(rawData, 0, sizeof(rawData));
-
-    // Definir las claves para cada valor usando las constantes
-    const char* keys[] = {
-        MODBUS_ENV4_KEY_HUMIDITY,
-        MODBUS_ENV4_KEY_TEMPERATURE,
-        MODBUS_ENV4_KEY_PRESSURE,
-        MODBUS_ENV4_KEY_ILLUMINATION
-    };
     
     bool ok = readHoldingRegisters(cfg.address, startReg, numRegs, rawData);
     if (!ok) {
-        // Llenar con NAN si fallo, pero usando las claves correctas
+        // Llenar con NAN si falló
+        // Respetamos el orden: [0]=Humedad, [1]=Temperatura, [2]=Presión, [3]=Iluminación
         for (int i=0; i<4; i++){
             SubValue sv;
-            strncpy(sv.key, keys[i], sizeof(sv.key));
             sv.value = NAN;
             reading.subValues.push_back(sv);
         }
         return reading;
     }
 
-    // Extraer segun datasheet (versión 4 en 1):
+    // Extraer según datasheet (versión 4 en 1):
     // rawData[0] = Humedad entera *10
     // rawData[1] = Temp entera *10 (16 bits con posible signo)
-    // rawData[5] = Presion *10 (en kPa)
+    // rawData[5] = Presión *10 (en kPa)
     // rawData[6] = LuxHigh (32 bits -> parte alta)
     // rawData[7] = LuxLow  (32 bits -> parte baja)
     // Los demás registros (ruido, PM2.5, PM10) vienen en 0 y se ignoran
 
-    // Humedad
+    // Agregar Humedad como primer valor [0]
     {
         SubValue sH;
-        strncpy(sH.key, keys[0], sizeof(sH.key)); 
         sH.value = rawData[0] / 10.0f;
         reading.subValues.push_back(sH);
     }
-    // Temperatura
+    
+    // Agregar Temperatura como segundo valor [1]
     {
         SubValue sT;
-        strncpy(sT.key, keys[1], sizeof(sT.key));
         // Ver si es negativo
         int16_t temp16 = (int16_t)rawData[1];
         sT.value = temp16 / 10.0f;
         reading.subValues.push_back(sT);
     }
-    // Presion
+    
+    // Agregar Presión Atmosférica como tercer valor [2]
     {
         SubValue sP;
-        strncpy(sP.key, keys[2], sizeof(sP.key));
-        sP.value = rawData[5] / 10.0f;  // kPa
+        sP.value = rawData[5] / 10.0f;
         reading.subValues.push_back(sP);
     }
-    // Lux
+    
+    // Agregar Iluminación como cuarto valor [3]
     {
-        uint32_t luxHigh = rawData[6];
-        uint32_t luxLow  = rawData[7];
-        uint32_t fullLux = (luxHigh << 16) | luxLow; 
         SubValue sL;
-        strncpy(sL.key, keys[3], sizeof(sL.key));
-        sL.value = (float)fullLux;
+        uint32_t lux = ((uint32_t)rawData[6] << 16) | rawData[7];
+        sL.value = (float)lux;
         reading.subValues.push_back(sL);
     }
-
+    
     return reading;
 }
 

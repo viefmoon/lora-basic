@@ -331,7 +331,7 @@ const double conversionFactor = (R1 + R2) / R1;
     {"8", "PH",    PH, true}, \
     {"R", "RTD1",  RTD, true}, \
     {"D", "DS1",   DS18B20, false}, \
-    {"I2C", "SHT30", SHT30, false} \
+    {"I2C", "SHT30", SHT30, true} \
 }
 
 // Sin sensores Modbus registrados

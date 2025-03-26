@@ -11,9 +11,20 @@ float AdcUtilities::measureAdcDifferential(uint8_t muxConfig)
     // Configurar MUX
     ADC.regWrite(INPMUX_ADDR_MASK, muxConfig);
     
-    // Iniciar lectura
+    // Iniciar una conversión single shot
+    ADC.sendCommand(START_OPCODE_MASK);
+    
+    // Leer el resultado
     uint8_t dummy1 = 0, dummy2 = 0;
     int32_t rawData = ADC.dataRead(&dummy1, &dummy2, &dummy2);
+    
+    // Detener la conversión
+    ADC.sendCommand(STOP_OPCODE_MASK);
+    
+    if (rawData == -1) {  // Error en la lectura
+        return NAN;
+    }
+    
     if (rawData & 0x00800000) {
         // Extender signo si el bit 23 está en 1
         rawData |= 0xFF000000;

@@ -31,7 +31,7 @@
 #include "ADS124S08.h"
 #include "HardwareManager.h"
 #include "SleepManager.h"
-
+#include "SHT31.h"
 //--------------------------------------------------------------------------------------------
 // Variables globales
 //--------------------------------------------------------------------------------------------
@@ -64,7 +64,7 @@ SPISettings spiRtdSettings(SPI_RTD_CLOCK, MSBFIRST, SPI_MODE1);
 SPISettings spiRadioSettings(SPI_RADIO_CLOCK, MSBFIRST, SPI_MODE0);
 
 MAX31865_RTD rtd(MAX31865_RTD::RTD_PT100, spi, spiRtdSettings, ioExpander, PT100_CS_PIN);
-SensirionI2cSht3x sht30Sensor;
+SHT31 sht30Sensor(0x44, &Wire);
 
 SX1262 radio = new Module(LORA_NSS_PIN, LORA_DIO1_PIN, LORA_RST_PIN, LORA_BUSY_PIN, spi, spiRadioSettings);
 LoRaWANNode node(&radio, &Region, subBand);

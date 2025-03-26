@@ -4,10 +4,10 @@
 #include <Arduino.h>
 #include "config.h"
 #include "debug.h"
-#include <SensirionI2cSht3x.h>
+#include "SHT31.h"
 
 // Variable externa
-extern SensirionI2cSht3x sht30Sensor;
+extern SHT31 sht30Sensor;
 
 /**
  * @brief Clase para manejar el sensor de temperatura y humedad SHT30
